@@ -1,0 +1,10 @@
+Name: Tank
+Components:
+  - Name: HDPE
+    Drawing Number: DRW013_AA
+    Version Number: 1.0
+    Quantity: 0.8
+    Units: kg
+Processes:
+  - Name: Blow Molding
+    Parts Per Hour: 50

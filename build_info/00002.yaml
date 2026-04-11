@@ -1,0 +1,15 @@
+Name: Tank Resupply
+Quantity: 500
+Start Date: 11-Apr-2026
+End Date: 11-Apr-2026
+Status: Scheduled
+Processes:
+- Name: Blow Molding
+  Parts Completed: 0
+  Total Parts: 500
+  Status: Scheduled
+  Components:
+  - Name: HDPE
+    Drawing Number: DRW013_AA
+    Quantity: 400.0
+    Units: kg

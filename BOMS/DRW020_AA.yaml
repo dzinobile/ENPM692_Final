@@ -1,0 +1,13 @@
+Name: Tank With Bearing
+Components:
+  - Name: Tank
+    Drawing Number: DRW001_AA
+    Quantity: 0.8
+    Units: kg
+  - Name: Bearing
+    Drawing Number: DRWW014_AA
+    Quantity: 2
+    Units: each 
+Processes:
+  - Name: Bearing Installation
+    Parts Per Hour: 20

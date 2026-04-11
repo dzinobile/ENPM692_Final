@@ -1,7 +1,7 @@
 """
-MES Injection Molder Operator Screen Mockup — Injection Molding Process
+MES blow Molder Operator Screen Mockup — blow Molding Process
 Logs all events (clock-in, batch scan, equipment scan, defects, production)
-to injection_molder_mes_log.csv with timestamps.
+to blow_molder_mes_log.csv with timestamps.
 """
 
 import tkinter as tk
@@ -10,7 +10,7 @@ import csv
 import os
 from datetime import datetime
 
-LOG_FILE = os.path.join(os.path.dirname(__file__), "injection_molder_mes_log.csv")
+LOG_FILE = os.path.join(os.path.dirname(__file__), "blow_molder_mes_log.csv")
 LOG_FIELDS = ["timestamp", "operator_id", "build_number", "batch_number", "event_type", "field", "value", "notes"]
 
 BUILD_ORDERS_FILE = os.path.join(os.path.dirname(__file__), "build_orders.csv")
@@ -131,7 +131,7 @@ def section_frame(parent, title):
 class MESApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("MES — Injection Molding Workstation")
+        self.title("MES — Blow Molding Workstation")
         self.configure(bg=BG)
         self.resizable(True, True)
         self.minsize(900, 680)
@@ -171,7 +171,7 @@ class MESApp(tk.Tk):
         # ── top bar ─────────────────────────────────────────────────────
         top = tk.Frame(self, bg="#111418", pady=6)
         top.pack(fill="x")
-        tk.Label(top, text="INJECTION MOLDER — MES OPERATOR CONSOLE",
+        tk.Label(top, text="BLOW MOLDER — MES OPERATOR CONSOLE",
                  bg="#111418", fg=ACCENT, font=("Courier New", 14, "bold")).pack(side="left", padx=16)
         self.clock_label = tk.Label(top, text="", bg="#111418", fg=TEXT_DIM,
                                     font=("Courier New", 11))
@@ -294,7 +294,7 @@ class MESApp(tk.Tk):
                                                  sticky="ew", pady=6)
 
         # Batch
-        styled_label(f, "Raw Plastic Batch #:").grid(row=5, column=0, sticky="w", pady=4)
+        styled_label(f, "HDPE Batch #:").grid(row=5, column=0, sticky="w", pady=4)
         self.batch_entry = styled_entry(f, textvariable=self.batch_number, width=18)
         self.batch_entry.grid(row=5, column=1, padx=8)
         self.batch_entry.bind("<Return>", lambda e: self._scan_batch())
