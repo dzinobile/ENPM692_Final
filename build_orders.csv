@@ -1,0 +1,5 @@
+build_number,build_name,build_quantity,parts_completed,build_status
+12345,Widget A,100,12,In Progress
+12346,Widget B,200,7,In Progress
+12347,Widget C,150,0,Not Started
+12348,Widget D,10,0,Not Started
