@@ -10,6 +10,7 @@ import csv
 import os
 from datetime import datetime
 import yaml
+from filelock import FileLock
 
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
 BUILD_INFO_DIR = os.path.join(BASE_DIR, "build_info")
@@ -56,31 +57,33 @@ def load_build_order(build_number: str) -> dict | None:
 def update_build_order(build_number: str, parts_completed: int, station_name: str) -> dict:
     """Overwrite parts_completed and recalculate status for the given process."""
     filepath = os.path.join(BUILD_INFO_DIR, f"{build_number}.yaml")
-    with open(filepath, "r") as f:
-        data = yaml.safe_load(f)
+    lock = FileLock(filepath + ".lock")
+    with lock:
+        with open(filepath, "r") as f:
+            data = yaml.safe_load(f)
 
-    station = next((p for p in data["Processes"] if p["Name"] == station_name), None)
-    if station is None:
-        return data
+        station = next((p for p in data["Processes"] if p["Name"] == station_name), None)
+        if station is None:
+            return data
 
-    station["Parts Completed"] = parts_completed
-    if parts_completed == 0:
-        station["Status"] = "Not Started"
-    elif parts_completed < station["Total Parts"]:
-        station["Status"] = "In Progress"
-    else:
-        station["Status"] = "Complete"
+        station["Parts Completed"] = parts_completed
+        if parts_completed == 0:
+            station["Status"] = "Not Started"
+        elif parts_completed < station["Total Parts"]:
+            station["Status"] = "In Progress"
+        else:
+            station["Status"] = "Complete"
 
-    processes = data["Processes"]
-    if processes and all(p["Status"] == "Complete" for p in processes):
-        data["Status"] = "Complete"
-    elif processes and any(p["Status"] == "In Progress" for p in processes):
-        data["Status"] = "In Progress"
-    else:
-        data["Status"] = "Not Started"
+        processes = data["Processes"]
+        if processes and all(p["Status"] == "Complete" for p in processes):
+            data["Status"] = "Complete"
+        elif processes and any(p["Status"] == "In Progress" for p in processes):
+            data["Status"] = "In Progress"
+        else:
+            data["Status"] = "Not Started"
 
-    with open(filepath, "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+        with open(filepath, "w") as f:
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
     return data
 

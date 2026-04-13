@@ -1,9 +1,9 @@
-Name: Tank
+Name: Pressure Chamber
 Components:
   - Name: HDPE
     Drawing Number: DRW013_AA
-    Quantity: 0.8
+    Quantity: 0.2
     Units: kg
 Processes:
-  - Name: tank_blow_molding
+  - Name: pressure_chamber_blow_molding
     Parts Per Hour: 50
