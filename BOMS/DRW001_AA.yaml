@@ -6,5 +6,5 @@ Components:
     Quantity: 0.8
     Units: kg
 Processes:
-  - Name: Blow Molding
+  - Name: blow_molding
     Parts Per Hour: 50

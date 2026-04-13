@@ -1,7 +1,7 @@
 """
-MES blow Molder Operator Screen Mockup — blow Molding Process
-Logs all events (clock-in, batch scan, equipment scan, defects, production)
-to blow_molder_mes_log.csv with timestamps.
+MES Operator Screen Mockup — Any process
+Operator scans the station name at startup, then clocks in.
+Logs all events to {station}_mes_log.csv with timestamps.
 """
 
 import tkinter as tk
@@ -12,60 +12,64 @@ from datetime import datetime
 import yaml
 
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
-LOG_FILE = os.path.join(os.path.dirname(__file__), "blow_molder_mes_log.csv")
-LOG_FIELDS = ["timestamp", "operator_id", "build_number", "batch_number", "event_type", "field", "value", "notes"]
-
-# BUILD_ORDERS_FILE = os.path.join(os.path.dirname(__file__), "build_orders.csv")
-# BUILD_ORDER_FIELDS = 
 BUILD_INFO_DIR = os.path.join(BASE_DIR, "build_info")
 INVENTORY_FILE = os.path.join(BASE_DIR, "inventory_tracker.csv")
 INVENTORY_FIELDS = [
     "Component Name", "Drawing Number",
     "Vendor", "Batch Number", "Quantity", "units", "Status", "Reorder Level",
 ]
+LOG_FIELDS = ["timestamp", "operator_id", "build_number", "batch_number", "event_type", "field", "value", "notes"]
 
 DATE_FORMATS = ["%d-%b-%Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]
+
 # ---------------------------------------------------------------------------
-# CSV helpers
+# File helpers
 # ---------------------------------------------------------------------------
 
-def ensure_log():
-    if not os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "w", newline="") as f:
+def ensure_log(filepath: str):
+    if not os.path.exists(filepath):
+        with open(filepath, "w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=LOG_FIELDS)
             writer.writeheader()
 
 
+def write_log_row(row: dict, filepath: str) -> dict:
+    ensure_log(filepath)
+    with open(filepath, "a", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=LOG_FIELDS)
+        writer.writerow(row)
+    return row
+
+
 # ---------------------------------------------------------------------------
-# Build order CSV helpers
+# Build order helpers
 # ---------------------------------------------------------------------------
 
 def load_build_order(build_number: str) -> dict | None:
-
-    BUILD_ORDER_FILE = os.path.join(BUILD_INFO_DIR, f"{build_number}.yaml")
-    if os.path.exists(BUILD_ORDER_FILE):
-        with open(BUILD_ORDER_FILE, "r") as f:
+    filepath = os.path.join(BUILD_INFO_DIR, f"{build_number}.yaml")
+    if os.path.exists(filepath):
+        with open(filepath, "r") as f:
             return yaml.safe_load(f)
     return None
 
 
-def update_build_order(build_number: str, parts_completed: int) -> dict:
-    """Overwrite parts_completed and recalculate status for the Blow Molding process."""
+def update_build_order(build_number: str, parts_completed: int, station_name: str) -> dict:
+    """Overwrite parts_completed and recalculate status for the given process."""
     filepath = os.path.join(BUILD_INFO_DIR, f"{build_number}.yaml")
     with open(filepath, "r") as f:
         data = yaml.safe_load(f)
 
-    blow_mold = next((p for p in data["Processes"] if p["Name"] == "Blow Molding"), None)
-    if blow_mold is None:
+    station = next((p for p in data["Processes"] if p["Name"] == station_name), None)
+    if station is None:
         return data
 
-    blow_mold["Parts Completed"] = parts_completed
+    station["Parts Completed"] = parts_completed
     if parts_completed == 0:
-        blow_mold["Status"] = "Not Started"
-    elif parts_completed < blow_mold["Total Parts"]:
-        blow_mold["Status"] = "In Progress"
+        station["Status"] = "Not Started"
+    elif parts_completed < station["Total Parts"]:
+        station["Status"] = "In Progress"
     else:
-        blow_mold["Status"] = "Complete"
+        station["Status"] = "Complete"
 
     processes = data["Processes"]
     if processes and all(p["Status"] == "Complete" for p in processes):
@@ -79,14 +83,6 @@ def update_build_order(build_number: str, parts_completed: int) -> dict:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
     return data
-
-
-def write_log_row(row: dict) -> dict:
-    ensure_log()
-    with open(LOG_FILE, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=LOG_FIELDS)
-        writer.writerow(row)
-    return row
 
 
 # ---------------------------------------------------------------------------
@@ -144,21 +140,25 @@ def section_frame(parent, title):
 class MESApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("MES — Blow Molding Workstation")
+        self.wm_title("MES — Operator Console")
         self.configure(bg=BG)
         self.resizable(True, True)
         self.minsize(900, 680)
 
         # --- state ---
+        self.station_id    = tk.StringVar()
+        self.station_locked = False
+
         self.operator_id   = tk.StringVar()
         self.clocked_in    = False
         self.clock_in_time = None
+
         self.build_number   = tk.StringVar()
         self.build_name     = tk.StringVar(value="—")
         self.build_quantity = tk.StringVar(value="—")
         self.build_status   = tk.StringVar(value="—")
         self.build_locked   = False
-        self.build_order = None
+        self.build_order    = None
 
         self.batch_number  = tk.StringVar()
         self.equipment_id  = tk.StringVar()
@@ -175,7 +175,20 @@ class MESApp(tk.Tk):
 
         self._build_ui()
         self._tick()   # live clock
-        
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _log_filepath(self) -> str:
+        return os.path.join(BASE_DIR, f"{self.station_id.get()}_mes_log.csv")
+
+    def _status(self, msg: str):
+        self.status_var.set(f"{datetime.now().strftime('%H:%M:%S')}  {msg}")
+
+    def _tick(self):
+        self.clock_label.config(text=datetime.now().strftime("%Y-%m-%d   %H:%M:%S"))
+        self.after(1000, self._tick)
 
     # ------------------------------------------------------------------
     # UI build
@@ -185,8 +198,9 @@ class MESApp(tk.Tk):
         # ── top bar ─────────────────────────────────────────────────────
         top = tk.Frame(self, bg="#111418", pady=6)
         top.pack(fill="x")
-        tk.Label(top, text="BLOW MOLDER — MES OPERATOR CONSOLE",
-                 bg="#111418", fg=ACCENT, font=("Courier New", 14, "bold")).pack(side="left", padx=16)
+        self.station_header = tk.Label(top, text="MES OPERATOR CONSOLE",
+                 bg="#111418", fg=ACCENT, font=("Courier New", 14, "bold"))
+        self.station_header.pack(side="left", padx=16)
         self.clock_label = tk.Label(top, text="", bg="#111418", fg=TEXT_DIM,
                                     font=("Courier New", 11))
         self.clock_label.pack(side="right", padx=16)
@@ -210,7 +224,7 @@ class MESApp(tk.Tk):
         self._build_log_section(right)
 
         # ── status bar ──────────────────────────────────────────────────
-        self.status_var = tk.StringVar(value="Ready — please clock in.")
+        self.status_var = tk.StringVar(value="Ready — please scan station and clock in.")
         status = tk.Label(self, textvariable=self.status_var, bg="#111418",
                           fg=TEXT_DIM, font=("Courier New", 9), anchor="w", padx=10)
         status.pack(fill="x", side="bottom")
@@ -223,19 +237,51 @@ class MESApp(tk.Tk):
         outer, f = section_frame(parent, "1 — OPERATOR CLOCK IN/OUT")
         outer.pack(fill="x", pady=(0, 6))
 
-        styled_label(f, "Operator ID:").grid(row=0, column=0, sticky="w", pady=4)
+        # Station scan row
+        styled_label(f, "Station ID:").grid(row=0, column=0, sticky="w", pady=4)
+        self.station_entry = styled_entry(f, textvariable=self.station_id, width=18)
+        self.station_entry.grid(row=0, column=1, padx=8)
+        self.station_entry.bind("<Return>", lambda e: self._scan_station())
+        self.btn_scan_station = accent_button(f, "SCAN / CONFIRM", self._scan_station, width=18)
+        self.btn_scan_station.grid(row=0, column=2, padx=4)
+        self.station_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
+        self.station_indicator.grid(row=0, column=3, padx=6)
+
+        # Separator
+        tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=1, column=0, columnspan=4,
+                                                 sticky="ew", pady=6)
+
+        # Operator scan row
+        styled_label(f, "Operator ID:").grid(row=2, column=0, sticky="w", pady=4)
         self.op_entry = styled_entry(f, textvariable=self.operator_id, width=18)
-        self.op_entry.grid(row=0, column=1, padx=8)
+        self.op_entry.grid(row=2, column=1, padx=8)
 
         self.btn_clockin = accent_button(f, "CLOCK IN", self._clock_in, color=ACCENT2)
-        self.btn_clockin.grid(row=0, column=2, padx=4)
+        self.btn_clockin.grid(row=2, column=2, padx=4)
         self.btn_clockout = accent_button(f, "CLOCK OUT", self._clock_out, color=DANGER, state="disabled")
-        self.btn_clockout.grid(row=0, column=3, padx=4)
+        self.btn_clockout.grid(row=2, column=3, padx=4)
 
         self.op_status = styled_label(f, "Not clocked in", color=TEXT_DIM)
-        self.op_status.grid(row=1, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        self.op_status.grid(row=3, column=0, columnspan=4, sticky="w", pady=(4, 0))
+
+    def _scan_station(self):
+        station = self.station_id.get().strip()
+        if not station:
+            messagebox.showwarning("Missing", "Enter or scan a Station ID.")
+            return
+        self.station_locked = True
+        self.station_entry.config(state="disabled")
+        self.btn_scan_station.config(state="disabled")
+        self.station_indicator.config(text="[OK]", fg=ACCENT2)
+        self.station_header.config(text=f"MES — {station.upper()}")
+        self.wm_title(f"MES — {station}")
+        self.log_label.config(text=f"Logging to: {self._log_filepath()}")
+        self._status(f"Station '{station}' confirmed.")
 
     def _clock_in(self):
+        if not self.station_locked:
+            messagebox.showwarning("No station", "Scan and confirm the Station ID before clocking in.")
+            return
         op = self.operator_id.get().strip()
         if not op:
             messagebox.showwarning("Missing", "Enter an Operator ID before clocking in.")
@@ -249,9 +295,7 @@ class MESApp(tk.Tk):
         self.op_entry.config(state="disabled")
         self.btn_clockin.config(state="disabled")
         self.btn_clockout.config(state="normal")
-        ts = row["timestamp"]
-        self.op_status.config(
-            text=f"Clocked in as  {op}  at {ts}", fg=ACCENT2)
+        self.op_status.config(text=f"Clocked in as  {op}  at {row['timestamp']}", fg=ACCENT2)
         self._status(f"Clock-in recorded for {op}.")
         self._append_feed(row)
 
@@ -294,7 +338,6 @@ class MESApp(tk.Tk):
         self.build_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
         self.build_indicator.grid(row=0, column=3, padx=6)
 
-        # Read-only value displays populated after a successful build scan
         tk.Label(f, textvariable=self.build_name, bg=PANEL_BG, fg=ACCENT,
                  font=("Courier New", 10)).grid(row=1, column=1, columnspan=2, sticky="w", padx=8)
         tk.Label(f, textvariable=self.build_quantity, bg=PANEL_BG, fg=ACCENT,
@@ -303,12 +346,11 @@ class MESApp(tk.Tk):
                                            fg=TEXT_DIM, font=("Courier New", 10, "bold"))
         self.build_status_label.grid(row=3, column=1, columnspan=2, sticky="w", padx=8)
 
-        # separator
         tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=4, column=0, columnspan=4,
                                                  sticky="ew", pady=6)
 
         # Batch
-        styled_label(f, "HDPE Batch #:").grid(row=5, column=0, sticky="w", pady=4)
+        styled_label(f, "Batch #:").grid(row=5, column=0, sticky="w", pady=4)
         self.batch_entry = styled_entry(f, textvariable=self.batch_number, width=18)
         self.batch_entry.grid(row=5, column=1, padx=8)
         self.batch_entry.bind("<Return>", lambda e: self._scan_batch())
@@ -335,7 +377,7 @@ class MESApp(tk.Tk):
             messagebox.showwarning("Not clocked in", "You must clock in before recording data.")
             return False
         return True
-    
+
     def _scan_build_info(self):
         if not self._require_clockin():
             return
@@ -346,25 +388,23 @@ class MESApp(tk.Tk):
 
         order = load_build_order(build_num)
         if order is None:
-            messagebox.showerror(
-                "Not Found",
-                f"Build number '{build_num}' was not found in build_orders.csv."
-            )
+            messagebox.showerror("Not Found", f"Build number '{build_num}' not found.")
             return
-        self._build_order = order  # store for later updates
+        self._build_order = order
 
-        blow_mold = next((p for p in order["Processes"] if p["Name"] == "Blow Molding"), None)
-        if blow_mold is None:
-            messagebox.showerror("Error", f"Build {build_num} has no Blow Molding process.")
+        station_name = self.station_id.get().strip()
+        station = next((p for p in order["Processes"] if p["Name"] == station_name), None)
+        if station is None:
+            messagebox.showerror("Error", f"Build {build_num} has no '{station_name}' process.")
             return
 
-        qty       = int(blow_mold["Total Parts"])
-        completed = int(blow_mold["Parts Completed"])
+        qty       = int(station["Total Parts"])
+        completed = int(station["Parts Completed"])
 
         self.build_name.set(order["Name"])
         self.build_quantity.set(f"{completed} / {qty}")
-        self.build_status.set(blow_mold["Status"])
-        self._refresh_build_status_color(blow_mold["Status"])
+        self.build_status.set(station["Status"])
+        self._refresh_build_status_color(station["Status"])
 
         self.build_locked = True
         self.build_number_entry.config(state="disabled")
@@ -379,7 +419,7 @@ class MESApp(tk.Tk):
         color_map = {
             "Not Started": TEXT_DIM,
             "In Progress": WARNING,
-            "COMPLETE":    ACCENT2,
+            "Complete":    ACCENT2,
         }
         self.build_status_label.config(fg=color_map.get(status, TEXT))
 
@@ -417,7 +457,6 @@ class MESApp(tk.Tk):
         if self.cycle_running:
             messagebox.showwarning("Cycle running", "Stop the production cycle before resetting the job.")
             return
-        # Build
         self.build_number.set("")
         self.build_name.set("—")
         self.build_quantity.set("—")
@@ -427,7 +466,6 @@ class MESApp(tk.Tk):
         self.btn_scan_build.config(state="normal")
         self.build_indicator.config(text="[ ]", fg=TEXT_DIM)
         self.build_status_label.config(fg=TEXT_DIM)
-        # Batch / equipment
         self.batch_number.set("")
         self.equipment_id.set("")
         self.batch_locked = False
@@ -469,22 +507,22 @@ class MESApp(tk.Tk):
         notes_entry.grid(row=2, column=1, columnspan=4, sticky="ew", padx=4, pady=(8, 0))
 
     # ------------------------------------------------------------------
-    # Core logger — reads all context from self, notes from the UI field
+    # Core logger
     # ------------------------------------------------------------------
 
     def _log(self, event_type: str, field: str, value: str) -> dict:
         row = {
-            "timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-            "operator_id": self.operator_id.get().strip(),
+            "timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+            "operator_id":  self.operator_id.get().strip(),
             "build_number": self.build_number.get().strip(),
             "batch_number": self.batch_number.get().strip(),
-            "event_type":  event_type,
-            "field":       field,
-            "value":       value,
-            "notes":       self.notes_var.get().strip(),
+            "event_type":   event_type,
+            "field":        field,
+            "value":        value,
+            "notes":        self.notes_var.get().strip(),
         }
-        write_log_row(row)
-        self.notes_var.set("")   # clear after capture
+        write_log_row(row, self._log_filepath())
+        self.notes_var.set("")
         return row
 
     def _ready_for_production(self):
@@ -494,7 +532,7 @@ class MESApp(tk.Tk):
             messagebox.showwarning("Job incomplete", "Scan and confirm the Build Number first.")
             return False
         if not self.batch_locked:
-            messagebox.showwarning("Job incomplete", "Confirm the raw plastic batch number first.")
+            messagebox.showwarning("Job incomplete", "Confirm the batch number first.")
             return False
         if not self.equip_locked:
             messagebox.showwarning("Job incomplete", "Confirm the equipment ID first.")
@@ -534,15 +572,16 @@ class MESApp(tk.Tk):
         new_count = self.parts_count.get() + 1
         self.parts_count.set(new_count)
 
-        build_num = self.build_number.get().strip()
+        build_num    = self.build_number.get().strip()
+        station_name = self.station_id.get().strip()
         if build_num:
-            updated = update_build_order(build_num, new_count)
+            updated = update_build_order(build_num, new_count, station_name)
             if updated:
-                blow_mold = next((p for p in updated["Processes"] if p["Name"] == "Blow Molding"), None)
-                if blow_mold:
-                    self.build_quantity.set(f"{new_count} / {blow_mold['Total Parts']}")
-                    self.build_status.set(blow_mold["Status"])
-                    self._refresh_build_status_color(blow_mold["Status"])
+                station = next((p for p in updated["Processes"] if p["Name"] == station_name), None)
+                if station:
+                    self.build_quantity.set(f"{new_count} / {station['Total Parts']}")
+                    self.build_status.set(station["Status"])
+                    self._refresh_build_status_color(station["Status"])
 
         row = self._log("PART_COUNT", "parts_produced", str(new_count))
         self._append_feed(row)
@@ -552,18 +591,9 @@ class MESApp(tk.Tk):
     # ------------------------------------------------------------------
 
     DEFECT_TYPES = [
-        "Flash",
-        "Short Shot",
-        "Sink Mark",
-        "Weld Line",
-        "Burn Mark",
-        "Warping",
-        "Jetting",
-        "Silver Streaks",
-        "Delamination",
-        "Voids / Bubbles",
-        "Discoloration",
-        "Other",
+        "Flash", "Short Shot", "Sink Mark", "Weld Line", "Burn Mark",
+        "Warping", "Jetting", "Silver Streaks", "Delamination",
+        "Voids / Bubbles", "Discoloration", "Other",
     ]
 
     def _build_defect_section(self, parent):
@@ -572,15 +602,12 @@ class MESApp(tk.Tk):
 
         styled_label(f, "Defect Type:").grid(row=0, column=0, sticky="w", pady=4)
         combo = ttk.Combobox(f, textvariable=self.defect_type, values=self.DEFECT_TYPES,
-                             state="readonly", width=22,
-                             font=("Courier New", 11))
+                             state="readonly", width=22, font=("Courier New", 11))
         combo.grid(row=0, column=1, padx=8)
-        # Style combobox to match theme (best-effort)
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TCombobox", fieldbackground=ENTRY_BG, background=ENTRY_BG,
-                        foreground=ENTRY_FG, selectbackground=ACCENT,
-                        selectforeground="#ffffff")
+                        foreground=ENTRY_FG, selectbackground=ACCENT, selectforeground="#ffffff")
 
         styled_label(f, "Qty:").grid(row=0, column=2, padx=(10, 4))
         qty_entry = styled_entry(f, textvariable=self.defect_qty, width=5)
@@ -589,7 +616,6 @@ class MESApp(tk.Tk):
         btn_log = accent_button(f, "LOG DEFECT", self._log_defect, color=WARNING, width=14)
         btn_log.grid(row=0, column=4, padx=8)
 
-        # Defect tally
         self.defect_tally_frame = tk.Frame(f, bg=PANEL_BG)
         self.defect_tally_frame.grid(row=1, column=0, columnspan=5, sticky="ew", pady=(10, 0))
         self.defect_tally: dict[str, int] = {}
@@ -607,7 +633,6 @@ class MESApp(tk.Tk):
             messagebox.showwarning("Invalid qty", "Defect quantity must be a positive integer.")
             return
         row = self._log("DEFECT", "defect_type", f"{dtype} x{qty}")
-        # update tally
         self.defect_tally[dtype] = self.defect_tally.get(dtype, 0) + qty
         self._refresh_tally()
         self._status(f"Defect logged: {dtype} × {qty}")
@@ -619,12 +644,9 @@ class MESApp(tk.Tk):
         col = 0
         for dtype, count in sorted(self.defect_tally.items()):
             color = WARNING if count < 5 else DANGER
-            lbl = tk.Label(self.defect_tally_frame,
-                           text=f"{dtype}: {count}",
-                           bg=PANEL_BG, fg=color,
-                           font=("Courier New", 9, "bold"),
-                           padx=6, pady=2,
-                           relief="groove")
+            lbl = tk.Label(self.defect_tally_frame, text=f"{dtype}: {count}",
+                           bg=PANEL_BG, fg=color, font=("Courier New", 9, "bold"),
+                           padx=6, pady=2, relief="groove")
             lbl.grid(row=0, column=col, padx=4, pady=2)
             col += 1
 
@@ -645,15 +667,14 @@ class MESApp(tk.Tk):
         scrollbar.pack(side="right", fill="y")
         self.feed_text.config(yscrollcommand=scrollbar.set)
 
-        # colour tags
         self.feed_text.tag_config("ts",    foreground=TEXT_DIM)
         self.feed_text.tag_config("event", foreground=ACCENT)
         self.feed_text.tag_config("defect",foreground=WARNING)
         self.feed_text.tag_config("cycle", foreground=ACCENT2)
         self.feed_text.tag_config("clock", foreground="#bb88ff")
 
-        lbl = styled_label(f, f"Logging to: {LOG_FILE}", size=8, color=TEXT_DIM)
-        lbl.pack(anchor="w", pady=(4, 0))
+        self.log_label = styled_label(f, "Logging to: (scan station to set)", size=8, color=TEXT_DIM)
+        self.log_label.pack(anchor="w", pady=(4, 0))
 
     def _append_feed(self, row: dict):
         tag_map = {
@@ -665,11 +686,6 @@ class MESApp(tk.Tk):
             "BUILD_SCAN":  "event",
         }
         event_tag = tag_map.get(row["event_type"], "event")
-        line = (f"[{row['timestamp']}] "
-                f"{row['event_type']:<12} "
-                f"{row['field']}: {row['value']}"
-                + (f"  ({row['notes']})" if row['notes'] else ""))
-
         self.feed_text.config(state="normal")
         self.feed_text.insert("end", f"[{row['timestamp']}] ", "ts")
         self.feed_text.insert("end", f"{row['event_type']:<12} ", event_tag)
@@ -679,23 +695,11 @@ class MESApp(tk.Tk):
         self.feed_text.see("end")
         self.feed_text.config(state="disabled")
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    def _status(self, msg: str):
-        self.status_var.set(f"{datetime.now().strftime('%H:%M:%S')}  {msg}")
-
-    def _tick(self):
-        self.clock_label.config(text=datetime.now().strftime("%Y-%m-%d   %H:%M:%S"))
-        self.after(1000, self._tick)
-
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    ensure_log()
     app = MESApp()
     app.mainloop()

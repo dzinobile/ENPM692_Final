@@ -1,0 +1,19 @@
+Name: Tanks with bearings
+Quantity: 10
+Start Date: 13-Apr-2026
+End Date: 13-Apr-2026
+Status: Scheduled
+Processes:
+- Name: install_bearings
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: Tank
+    Drawing Number: DRW001_AA
+    Quantity: 10
+    Units: each
+  - Name: Bearing
+    Drawing Number: DRWW014_AA
+    Quantity: 20
+    Units: each
