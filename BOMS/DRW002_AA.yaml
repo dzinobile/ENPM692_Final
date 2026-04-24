@@ -1,9 +1,0 @@
-Name: Pressure Chamber
-Components:
-  - Name: HDPE
-    Drawing Number: DRW013_AA
-    Quantity: 0.2
-    Units: kg
-Processes:
-  - Name: pressure_chamber_blow_molding
-    Parts Per Hour: 50

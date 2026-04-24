@@ -349,31 +349,36 @@ class MESApp(tk.Tk):
                                            fg=TEXT_DIM, font=("Courier New", 10, "bold"))
         self.build_status_label.grid(row=3, column=1, columnspan=2, sticky="w", padx=8)
 
-        tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=4, column=0, columnspan=4,
+        styled_label(f, "Components:").grid(row=4, column=0, sticky="nw", padx=(0, 4), pady=(4, 2))
+        self.components_label = tk.Label(f, text="—", bg=PANEL_BG, fg=TEXT_DIM,
+                                         font=("Courier New", 9), justify="left", anchor="w")
+        self.components_label.grid(row=4, column=1, columnspan=3, sticky="w", padx=8, pady=(4, 2))
+
+        tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=5, column=0, columnspan=4,
                                                  sticky="ew", pady=6)
 
         # Batch
-        styled_label(f, "Batch #:").grid(row=5, column=0, sticky="w", pady=4)
+        styled_label(f, "Batch #:").grid(row=6, column=0, sticky="w", pady=4)
         self.batch_entry = styled_entry(f, textvariable=self.batch_number, width=18)
-        self.batch_entry.grid(row=5, column=1, padx=8)
+        self.batch_entry.grid(row=6, column=1, padx=8)
         self.batch_entry.bind("<Return>", lambda e: self._scan_batch())
         self.btn_scan_batch = accent_button(f, "SCAN / CONFIRM", self._scan_batch, width=18)
-        self.btn_scan_batch.grid(row=5, column=2, padx=4)
+        self.btn_scan_batch.grid(row=6, column=2, padx=4)
         self.batch_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
-        self.batch_indicator.grid(row=5, column=3, padx=6)
+        self.batch_indicator.grid(row=6, column=3, padx=6)
 
         # Equipment
-        styled_label(f, "Equipment ID:").grid(row=6, column=0, sticky="w", pady=4)
+        styled_label(f, "Equipment ID:").grid(row=7, column=0, sticky="w", pady=4)
         self.equip_entry = styled_entry(f, textvariable=self.equipment_id, width=18)
-        self.equip_entry.grid(row=6, column=1, padx=8)
+        self.equip_entry.grid(row=7, column=1, padx=8)
         self.equip_entry.bind("<Return>", lambda e: self._scan_equip())
         self.btn_scan_equip = accent_button(f, "SCAN / CONFIRM", self._scan_equip, width=18)
-        self.btn_scan_equip.grid(row=6, column=2, padx=4)
+        self.btn_scan_equip.grid(row=7, column=2, padx=4)
         self.equip_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
-        self.equip_indicator.grid(row=6, column=3, padx=6)
+        self.equip_indicator.grid(row=7, column=3, padx=6)
 
         btn_reset = accent_button(f, "RESET JOB", self._reset_job, color=WARNING, width=12)
-        btn_reset.grid(row=7, column=2, sticky="e", pady=(8, 0))
+        btn_reset.grid(row=8, column=2, sticky="e", pady=(8, 0))
 
     def _require_clockin(self):
         if not self.clocked_in:
@@ -408,6 +413,15 @@ class MESApp(tk.Tk):
         self.build_quantity.set(f"{completed} / {qty}")
         self.build_status.set(station["Status"])
         self._refresh_build_status_color(station["Status"])
+
+        comp_lines = [
+            f"{c['Name']}  {c['Quantity']} {c.get('Units', '')}  [{c['Drawing Number']}]"
+            for c in station.get("Components", [])
+        ]
+        self.components_label.config(
+            text="\n".join(comp_lines) if comp_lines else "—",
+            fg=TEXT_DIM,
+        )
 
         self.build_locked = True
         self.build_number_entry.config(state="disabled")
@@ -464,6 +478,7 @@ class MESApp(tk.Tk):
         self.build_name.set("—")
         self.build_quantity.set("—")
         self.build_status.set("—")
+        self.components_label.config(text="—", fg=TEXT_DIM)
         self.build_locked = False
         self.build_number_entry.config(state="normal")
         self.btn_scan_build.config(state="normal")

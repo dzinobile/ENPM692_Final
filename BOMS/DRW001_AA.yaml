@@ -1,9 +1,10 @@
 Name: Tank
-Components:
-  - Name: HDPE
-    Drawing Number: DRW013_AA
-    Quantity: 0.8
-    Units: kg
+Per Unit Weight: 0.7
 Processes:
   - Name: tank_blow_molding
     Parts Per Hour: 50
+    Components:
+    - Name: HDPE
+      Drawing Number: DRW013_AA
+      Quantity: 0.8
+      Units: kg

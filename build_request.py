@@ -123,16 +123,27 @@ def parse_date(s: str) -> datetime | None:
 
 def check_materials(bom: dict, quantity: int, inventory: dict) -> list[dict]:
     """
-    Returns one result dict per BOM component:
+    Returns one result dict per unique component across all processes:
       name, drawing_number, required, available, units, ok
-    Matches inventory by Component Name (case-insensitive).
+    Aggregates quantities when the same component appears in multiple processes.
     """
-    results = []
-    for comp in bom.get("Components", []):
-        required = comp["Quantity"] * quantity
-        name_key = comp["Name"].strip().lower()
-        inv_row  = inventory.get(name_key)
+    totals: dict[str, dict] = {}
+    for proc in bom.get("Processes", []):
+        for comp in proc.get("Components", []):
+            key = comp["Name"].strip().lower()
+            if key not in totals:
+                totals[key] = {
+                    "name":           comp["Name"],
+                    "drawing_number": comp["Drawing Number"],
+                    "quantity":       0.0,
+                    "units":          comp.get("Units", ""),
+                }
+            totals[key]["quantity"] += comp["Quantity"]
 
+    results = []
+    for item in totals.values():
+        required = item["quantity"] * quantity
+        inv_row  = inventory.get(item["name"].strip().lower())
         if inv_row:
             try:
                 available = float(inv_row["Quantity"])
@@ -140,13 +151,12 @@ def check_materials(bom: dict, quantity: int, inventory: dict) -> list[dict]:
                 available = 0.0
         else:
             available = 0.0
-
         results.append({
-            "name":           comp["Name"],
-            "drawing_number": comp["Drawing Number"],
+            "name":           item["name"],
+            "drawing_number": item["drawing_number"],
             "required":       required,
             "available":      available,
-            "units":          comp.get("Units", ""),
+            "units":          item["units"],
             "ok":             available >= required,
         })
     return results
@@ -171,7 +181,7 @@ def generate_build_yaml(build_num: str, build_name: str, quantity: int,
                 "Quantity":       c["Quantity"] * quantity,
                 "Units":          c.get("Units", ""),
             }
-            for c in bom.get("Components", [])
+            for c in proc.get("Components", [])
         ]
         processes.append({
             "Name":            proc["Name"],
@@ -388,18 +398,15 @@ class BuildRequestApp(tk.Tk):
 
         t.insert("end", f"{bom.get('Name', '?')}\n", "head")
 
-        if bom.get("Components"):
-            t.insert("end", "\nComponents:\n", "head")
-            for c in bom["Components"]:
-                t.insert("end",
-                         f"  {c['Name']:<20}  {c['Quantity']} {c.get('Units','')}  "
-                         f"[{c['Drawing Number']}]\n")
-
         if bom.get("Processes"):
             t.insert("end", "\nProcesses:\n", "head")
             for p in bom["Processes"]:
                 pph = p.get("Parts Per Hour", "?")
                 t.insert("end", f"  {p['Name']:<30}  {pph} parts/hr\n")
+                for c in p.get("Components", []):
+                    t.insert("end",
+                             f"    {c['Name']:<18}  {c['Quantity']} {c.get('Units', '')}  "
+                             f"[{c['Drawing Number']}]\n", "dim")
 
         t.config(state="disabled")
 

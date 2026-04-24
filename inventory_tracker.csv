@@ -1,5 +1,3 @@
-Component Name,Drawing Number,Vendor,Batch Number,Quantity,units,Status,Reorder Level
-HDPE,DRWW013_AA,American Plastics,68523168,5000,kg,In Stock,1000
-Tank,DRW001_AA,In-House,00001,10,units,In Stock,50
-Bearing,DRWW014_AA,McMaster-Carr,12346,100,units,In Stock,10
-
+Container ID,Drawing Number,Description,Vendor,Batch,Quantity,Units,Status
+10001,DRW013_AA,HDPE,AnyPlastic,b100f100,100,kg,available
+10002,DRW013_AA,HDPE,AnyPlastic,b100f102,50.0,kg,available
