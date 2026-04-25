@@ -18,10 +18,9 @@ BOMS_DIR       = os.path.join(BASE_DIR, "BOMS")
 BUILD_INFO_DIR = os.path.join(BASE_DIR, "build_info")
 INVENTORY_FILE = os.path.join(BASE_DIR, "inventory_tracker.csv")
 
-# inventory_tracker.csv has 9 columns but only 8 headers (Version Number is missing)
 INVENTORY_FIELDS = [
-    "Component Name", "Drawing Number",
-    "Vendor", "Batch Number", "Quantity", "units", "Status", "Reorder Level",
+    "Container ID", "Drawing Number", "Description",
+    "Vendor", "Batch", "Quantity", "Units", "Status",
 ]
 
 DATE_FORMATS = ["%d-%b-%Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]
@@ -99,17 +98,25 @@ def load_bom(drawing_number: str) -> dict | None:
 
 
 def load_inventory() -> dict:
-    """Returns dict keyed by Component Name (lowercase) → row dict."""
-    inv = {}
+    """Returns dict keyed by Drawing Number → total available quantity across all 'available' containers."""
+    totals: dict[str, dict] = {}
     if not os.path.exists(INVENTORY_FILE):
-        return inv
+        return totals
     with open(INVENTORY_FILE, newline="") as f:
-        reader = csv.DictReader(f, fieldnames=INVENTORY_FIELDS)
-        next(reader)  # skip header row
-        for row in reader:
-            if row["Component Name"].strip():
-                inv[row["Component Name"].strip().lower()] = row
-    return inv
+        for row in csv.DictReader(f):
+            if row.get("Status", "").strip().lower() != "available":
+                continue
+            dwg = row.get("Drawing Number", "").strip()
+            if not dwg:
+                continue
+            try:
+                qty = float(row.get("Quantity", 0))
+            except (ValueError, TypeError):
+                qty = 0.0
+            if dwg not in totals:
+                totals[dwg] = {"quantity": 0.0, "units": row.get("Units", "").strip()}
+            totals[dwg]["quantity"] += qty
+    return totals
 
 
 def parse_date(s: str) -> datetime | None:
@@ -123,14 +130,15 @@ def parse_date(s: str) -> datetime | None:
 
 def check_materials(bom: dict, quantity: int, inventory: dict) -> list[dict]:
     """
-    Returns one result dict per unique component across all processes:
+    Returns one result dict per unique component (keyed by Drawing Number) across all processes:
       name, drawing_number, required, available, units, ok
-    Aggregates quantities when the same component appears in multiple processes.
+    Aggregates per-build quantities across processes, then multiplies by build quantity.
+    inventory is keyed by Drawing Number → {quantity, units} totalled from all available containers.
     """
     totals: dict[str, dict] = {}
     for proc in bom.get("Processes", []):
         for comp in proc.get("Components", []):
-            key = comp["Name"].strip().lower()
+            key = comp["Drawing Number"].strip()
             if key not in totals:
                 totals[key] = {
                     "name":           comp["Name"],
@@ -142,15 +150,9 @@ def check_materials(bom: dict, quantity: int, inventory: dict) -> list[dict]:
 
     results = []
     for item in totals.values():
-        required = item["quantity"] * quantity
-        inv_row  = inventory.get(item["name"].strip().lower())
-        if inv_row:
-            try:
-                available = float(inv_row["Quantity"])
-            except (ValueError, TypeError):
-                available = 0.0
-        else:
-            available = 0.0
+        required  = item["quantity"] * quantity
+        inv_entry = inventory.get(item["drawing_number"].strip())
+        available = inv_entry["quantity"] if inv_entry else 0.0
         results.append({
             "name":           item["name"],
             "drawing_number": item["drawing_number"],
@@ -170,7 +172,7 @@ def calculate_end_date(start: datetime, bom: dict, quantity: int) -> datetime:
     return start + timedelta(hours=total_hours)
 
 
-def generate_build_yaml(build_num: str, build_name: str, quantity: int,
+def generate_build_yaml(build_num: str, requester: str, build_name: str, ta_number: str, quantity: int,
                         start: datetime, end: datetime, bom: dict) -> str:
     processes = []
     for proc in bom.get("Processes", []):
@@ -192,7 +194,10 @@ def generate_build_yaml(build_num: str, build_name: str, quantity: int,
         })
 
     data = {
+        "Requester":  requester,
         "Name":       build_name,
+        "Top Assembly Drawing Number": ta_number,
+        "Top Assembly Drawing Name":   bom.get("Name", ""),
         "Quantity":   quantity,
         "Start Date": start.strftime("%d-%b-%Y"),
         "End Date":   end.strftime("%d-%b-%Y"),
@@ -219,6 +224,7 @@ class BuildRequestApp(tk.Tk):
         self.resizable(True, True)
         self.minsize(900, 620)
 
+        self.requester      = tk.StringVar()
         self.drawing_number = tk.StringVar()
         self.build_name     = tk.StringVar()
         self.quantity_var   = tk.StringVar()
@@ -264,6 +270,7 @@ class BuildRequestApp(tk.Tk):
         outer.pack(fill="x", pady=(0, 6))
 
         rows = [
+            ("Requester:",              self.requester),
             ("Top Assembly Drawing #:", self.drawing_number),
             ("Build Name:",             self.build_name),
             ("Quantity:",               self.quantity_var),
@@ -281,7 +288,7 @@ class BuildRequestApp(tk.Tk):
             row=3, column=2, sticky="w")
 
         btn_row = tk.Frame(f, bg=PANEL_BG)
-        btn_row.grid(row=4, column=0, columnspan=3, sticky="e", pady=(10, 0))
+        btn_row.grid(row=5, column=0, columnspan=3, sticky="e", pady=(10, 0))
 
         self.btn_load = accent_button(btn_row, "LOAD BOM", self._load_bom, color=ACCENT)
         self.btn_load.pack(side="left", padx=4)
@@ -475,6 +482,8 @@ class BuildRequestApp(tk.Tk):
         qty_str  = self.quantity_var.get().strip()
         date_str = self.start_date_var.get().strip()
         name     = self.build_name.get().strip() or self._bom.get("Name", "Build")
+        requester = self.requester.get().strip()
+        ta_number = self.drawing_number.get().strip()
 
         try:
             quantity = int(qty_str)
@@ -489,11 +498,13 @@ class BuildRequestApp(tk.Tk):
 
         end        = calculate_end_date(start, self._bom, quantity)
         build_num  = next_build_number()
-        path       = generate_build_yaml(build_num, name, quantity, start, end, self._bom)
+        path       = generate_build_yaml(build_num, requester, name, ta_number, start, end, self._bom)
 
         self._log(f"Build order created: {path}", "ok")
         self._log(f"  Build #:    {build_num}", "info")
+        self._log(f"  Requester:  {requester}", "info")
         self._log(f"  Name:       {name}", "info")
+        self._log(f" Top Assembly Drawing Number: {ta_number}", "info")
         self._log(f"  Quantity:   {quantity}", "info")
         self._log(f"  Start:      {start.strftime('%d-%b-%Y')}", "info")
         self._log(f"  End:        {end.strftime('%d-%b-%Y')}", "info")

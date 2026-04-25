@@ -1,7 +1,8 @@
 Name: Tank
 Per Unit Weight: 0.7
+Container Weight: 10
 Processes:
-  - Name: tank_blow_molding
+  - Name: tank blow molding
     Parts Per Hour: 50
     Components:
     - Name: HDPE

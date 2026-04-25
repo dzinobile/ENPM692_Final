@@ -15,6 +15,7 @@ from filelock import FileLock
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
 INVENTORY_FILE = os.path.join(BASE_DIR, "inventory_tracker.csv")
 EQUIPMENT_DIR  = os.path.join(BASE_DIR, "equipment")
+BOMS_DIR       = os.path.join(BASE_DIR, "BOMS")
 INVENTORY_FIELDS = [
     "Container ID", "Drawing Number", "Description",
     "Vendor", "Batch", "Quantity", "Units", "Status",
@@ -70,6 +71,30 @@ def read_scale(scale_id: str) -> tuple[float, str] | None:
     if last_row is None:
         return None
     return float(last_row["reading"]), last_row["units"]
+
+
+def load_bom(drawing_number: str) -> dict | None:
+    path = os.path.join(BOMS_DIR, f"{drawing_number}.yaml")
+    if not os.path.exists(path):
+        return None
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+def estimate_quantity(scale_reading: float, scale_units: str, drawing_number: str) -> tuple[float, str]:
+    """Subtract container weight, then divide by per-unit weight if set (returns pcs).
+    Falls back to raw net weight if BOM is missing or Per Unit Weight is None."""
+    bom = load_bom(drawing_number)
+    if bom is None:
+        return scale_reading, scale_units
+    container_weight = float(bom.get("Container Weight") or 0)
+    per_unit_weight  = bom.get("Per Unit Weight")
+    net = scale_reading - container_weight
+    if per_unit_weight is not None and str(per_unit_weight).strip().lower() != "none":
+        puw = float(per_unit_weight)
+        if puw > 0:
+            return round(net / puw), "pcs"
+    return round(net, 4), scale_units
 
 
 def load_requests() -> list[dict]:
@@ -298,7 +323,7 @@ class InventoryMESApp(tk.Tk):
     # ------------------------------------------------------------------
 
     def _log_filepath(self) -> str:
-        return os.path.join(BASE_DIR, f"{self.station_id.get()}_mes_log.csv")
+        return os.path.join(BASE_DIR, f"logs/{self.station_id.get()}_mes_log.csv")
 
     def _status(self, msg: str):
         self.status_var.set(f"{datetime.now().strftime('%H:%M:%S')}  {msg}")
@@ -350,12 +375,11 @@ class InventoryMESApp(tk.Tk):
 
         self._build_clock_section(left)
         self._build_container_section(left)
-        self._build_checkin_section(left)
 
         self._build_requests_section(right)
         self._build_checkout_section(right)
         self._build_checkin_section(right)
-        self._build_log_section(right)
+        self._build_log_section(left)
 
         self.status_var = tk.StringVar(value="Ready — please scan station and clock in.")
         tk.Label(self, textvariable=self.status_var, bg="#111418",
@@ -550,14 +574,16 @@ class InventoryMESApp(tk.Tk):
                                  f"Expected: equipment/{scale}.csv")
             return
         reading, units = result
-        self.quantity_var.set(str(reading))
-        self.units_var.set(units)
+        drawing = self.drawing.get().strip()
+        qty, qty_units = estimate_quantity(reading, units, drawing)
+        self.quantity_var.set(str(qty))
+        self.units_var.set(qty_units)
         self._scale_confirmed = True
         self.scale_entry.config(state="disabled")
         self.btn_scan_scale.config(state="disabled")
         self.scale_indicator.config(text="[OK]", fg=ACCENT2)
-        row = self._log("SCALE_SCAN", "scale_id", f"{scale}  reading={reading} {units}")
-        self._status(f"Scale {scale}: {reading} {units}")
+        row = self._log("SCALE_SCAN", "scale_id", f"{scale}  raw={reading} {units}  est={qty} {qty_units}")
+        self._status(f"Scale {scale}: {reading} {units}  →  {qty} {qty_units}")
         self._append_feed(row)
 
     def _add_container(self):
@@ -934,16 +960,18 @@ class InventoryMESApp(tk.Tk):
                                  f"Expected: equipment/{scale}.csv")
             return
         reading, units = result
-        self.ci_new_qty_var.set(str(reading))
-        self.ci_units_var.set(units)
+        drawing = self._checkin_container.get("Drawing Number", "").strip()
+        qty, qty_units = estimate_quantity(reading, units, drawing)
+        self.ci_new_qty_var.set(str(qty))
+        self.ci_units_var.set(qty_units)
         self._ci_scale_confirmed = True
         self.ci_scale_entry.config(state="disabled")
         self.btn_ci_scale.config(state="disabled")
         self.ci_scale_indicator.config(text="[OK]", fg=ACCENT2)
         self.btn_checkin.config(state="normal")
 
-        row = self._log("SCALE_SCAN", "scale_id", f"{scale}  reading={reading} {units}")
-        self._status(f"Scale {scale}: {reading} {units}")
+        row = self._log("SCALE_SCAN", "scale_id", f"{scale}  raw={reading} {units}  est={qty} {qty_units}")
+        self._status(f"Scale {scale}: {reading} {units}  →  {qty} {qty_units}")
         self._append_feed(row)
 
     def _checkin(self):

@@ -1,0 +1,58 @@
+Name: Subassembly
+Per Unit Weight: 2
+Container Weight: 10
+Processes:
+  - Name: cut off switch assembly
+    Parts Per Hour: 12
+    Components:
+    - Name: fitting cut off body
+      Drawing Number: DRW014_AA
+      Quantity: 1
+      Units: each
+    - Name: plugged valve pin
+      Drawing Number: DRW015_AA
+      Quantity: 2
+      Units: each
+    - Name: scrap - cut off switch assembly
+      Drawing Number: SCR001
+      Quantity: 0
+      Units: kg
+  - Name: duro mist spray nozzle
+    Parts Per Hour: 12
+    Components:
+    - Name: output - cut off switch assembly
+      Drawing Number: DRW022_AA
+      Quantity: 0
+      Units: each
+    - Name: scrap - duro mist spray nozzle
+      Drawing Number: SCR002
+      Quantity: 0
+      Units: kg
+    - Name: fitting cap
+      Drawing Number: DRW018_AA
+      Quantity: 1
+      Units: each
+    - Name: disc
+      Drawing Number: DRW019_AA
+      Quantity: 1
+      Units: each
+  - Name: valve box and pressure chamber assembly
+    Parts Per Hour: 6
+    Components:
+    - Name: output - duro mist spray nozzle
+      Drawing Number: DRW023_AA
+      Quantity: 0
+      Units: each
+    - Name: scrap - valve box and pressure chamber assembly
+      Drawing Number: SCR003
+      Quantity: 0
+      Units: kg
+    - Name: valve box with nipple
+      Drawing Number: DRW020_AA
+      Quantity: 1
+      Units: each
+    - Name: suction diaphragm
+      Drawing Number: DRW021_AA
+      Quantity: 1
+      Units: each
+

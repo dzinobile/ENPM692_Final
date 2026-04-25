@@ -16,9 +16,15 @@ BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
 BUILD_INFO_DIR = os.path.join(BASE_DIR, "build_info")
 INVENTORY_FILE = os.path.join(BASE_DIR, "inventory_tracker.csv")
 INVENTORY_FIELDS = [
-    "Component Name", "Drawing Number",
-    "Vendor", "Batch Number", "Quantity", "units", "Status", "Reorder Level",
+    "Container ID", "Drawing Number", "Description",
+    "Vendor", "Batch", "Quantity", "Units", "Status",
 ]
+REQUEST_FILE = os.path.join(BASE_DIR, "component_requests.csv")
+REQUEST_FIELDS = [
+    "drawing number", "description", "station ID", "request status"
+]
+
+
 LOG_FIELDS = ["timestamp", "operator_id", "build_number", "batch_number", "event_type", "field", "value", "notes"]
 
 DATE_FORMATS = ["%d-%b-%Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]
@@ -45,6 +51,32 @@ def write_log_row(row: dict, filepath: str) -> dict:
 # ---------------------------------------------------------------------------
 # Build order helpers
 # ---------------------------------------------------------------------------
+
+def write_component_request(drawing_number: str, description: str, station_id: str) -> None:
+    lock = FileLock(REQUEST_FILE + ".lock")
+    with lock:
+        file_exists = os.path.exists(REQUEST_FILE)
+        with open(REQUEST_FILE, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=REQUEST_FIELDS)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow({
+                "drawing number": drawing_number,
+                "description":    description,
+                "station ID":     station_id,
+                "request status": "not complete",
+            })
+
+
+def lookup_container(container_id: str) -> dict | None:
+    if not os.path.exists(INVENTORY_FILE):
+        return None
+    with open(INVENTORY_FILE, newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("Container ID", "").strip() == container_id.strip():
+                return row
+    return None
+
 
 def load_build_order(build_number: str) -> dict | None:
     filepath = os.path.join(BUILD_INFO_DIR, f"{build_number}.yaml")
@@ -150,6 +182,7 @@ class MESApp(tk.Tk):
 
         # --- state ---
         self.station_id    = tk.StringVar()
+        self.station_number = tk.StringVar()
         self.station_locked = False
 
         self.operator_id   = tk.StringVar()
@@ -163,9 +196,10 @@ class MESApp(tk.Tk):
         self.build_locked   = False
         self.build_order    = None
 
-        self.batch_number  = tk.StringVar()
         self.equipment_id  = tk.StringVar()
         self.batch_locked  = False
+        self._comp_scan_state   = []   # {"var": StringVar, "confirmed": bool, "drawing_number": str}
+        self._comp_scan_widgets = []   # {"entry": Entry, "btn": Button, "indicator": Label}
         self.equip_locked  = False
 
         self.cycle_running = False
@@ -176,6 +210,11 @@ class MESApp(tk.Tk):
         self.defect_qty    = tk.StringVar(value="1")
         self.notes_var     = tk.StringVar()
 
+        self.lbl_drawing_var     = tk.StringVar(value="—")
+        self.lbl_description_var = tk.StringVar(value="—")
+        self.lbl_vendor_var      = tk.StringVar(value="—")
+        self.lbl_batch_var       = tk.StringVar(value="—")
+
         self._build_ui()
         self._tick()   # live clock
 
@@ -184,7 +223,7 @@ class MESApp(tk.Tk):
     # ------------------------------------------------------------------
 
     def _log_filepath(self) -> str:
-        return os.path.join(BASE_DIR, f"{self.station_id.get()}_mes_log.csv")
+        return os.path.join(BASE_DIR, f"logs/{self.station_id.get()}_{self.station_number.get()}_mes_log.csv")
 
     def _status(self, msg: str):
         self.status_var.set(f"{datetime.now().strftime('%H:%M:%S')}  {msg}")
@@ -224,6 +263,7 @@ class MESApp(tk.Tk):
 
         # right column
         self._build_defect_section(right)
+        self._build_print_labels_section(right)
         self._build_log_section(right)
 
         # ── status bar ──────────────────────────────────────────────────
@@ -250,22 +290,32 @@ class MESApp(tk.Tk):
         self.station_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
         self.station_indicator.grid(row=0, column=3, padx=6)
 
+        # Station number scan row
+        styled_label(f, "Station Number:").grid(row=1, column=0, sticky="w", pady=4)
+        self.station_number_entry = styled_entry(f, textvariable=self.station_number, width=18)
+        self.station_number_entry.grid(row=1, column=1, padx=8)
+        self.station_number_entry.bind("<Return>", lambda e: self._scan_station_number())
+        self.btn_scan_station_number = accent_button(f, "SCAN / CONFIRM", self._scan_station_number, width=18)
+        self.btn_scan_station_number.grid(row=1, column=2, padx=4)
+        self.station_number_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
+        self.station_number_indicator.grid(row=1, column=3, padx=6)
+
         # Separator
-        tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=1, column=0, columnspan=4,
+        tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=2, column=0, columnspan=4,
                                                  sticky="ew", pady=6)
 
         # Operator scan row
-        styled_label(f, "Operator ID:").grid(row=2, column=0, sticky="w", pady=4)
+        styled_label(f, "Operator ID:").grid(row=3, column=0, sticky="w", pady=4)
         self.op_entry = styled_entry(f, textvariable=self.operator_id, width=18)
-        self.op_entry.grid(row=2, column=1, padx=8)
+        self.op_entry.grid(row=3, column=1, padx=8)
 
         self.btn_clockin = accent_button(f, "CLOCK IN", self._clock_in, color=ACCENT2)
-        self.btn_clockin.grid(row=2, column=2, padx=4)
+        self.btn_clockin.grid(row=4, column=2, padx=4)
         self.btn_clockout = accent_button(f, "CLOCK OUT", self._clock_out, color=DANGER, state="disabled")
-        self.btn_clockout.grid(row=2, column=3, padx=4)
+        self.btn_clockout.grid(row=4, column=3, padx=4)
 
         self.op_status = styled_label(f, "Not clocked in", color=TEXT_DIM)
-        self.op_status.grid(row=3, column=0, columnspan=4, sticky="w", pady=(4, 0))
+        self.op_status.grid(row=4, column=0, columnspan=4, sticky="w", pady=(4, 0))
 
     def _scan_station(self):
         station = self.station_id.get().strip()
@@ -280,6 +330,21 @@ class MESApp(tk.Tk):
         self.wm_title(f"MES — {station}")
         self.log_label.config(text=f"Logging to: {self._log_filepath()}")
         self._status(f"Station '{station}' confirmed.")
+
+    def _scan_station_number(self):
+        station = self.station_id.get().strip()
+        station_number = self.station_number.get().strip()
+        if not station_number:
+            messagebox.showwarning("Missing", "Enter or scan a station number.")
+            return
+        self.station_locked = True
+        self.station_number_entry.config(state="disabled")
+        self.btn_scan_station_number.config(state="disabled")
+        self.station_number_indicator.config(text="[OK]", fg=ACCENT2)
+        self.station_header.config(text=f"MES - {station.upper()} - {station_number.upper()}")
+        self.wm_title(f"MES - {station} - {station_number}")
+        self.log_label.config(text=f"Logging to: {self._log_filepath()}")
+        self._status(f"Station Number {station_number}.")
 
     def _clock_in(self):
         if not self.station_locked:
@@ -352,20 +417,17 @@ class MESApp(tk.Tk):
         styled_label(f, "Components:").grid(row=4, column=0, sticky="nw", padx=(0, 4), pady=(4, 2))
         self.components_label = tk.Label(f, text="—", bg=PANEL_BG, fg=TEXT_DIM,
                                          font=("Courier New", 9), justify="left", anchor="w")
-        self.components_label.grid(row=4, column=1, columnspan=3, sticky="w", padx=8, pady=(4, 2))
+        self.components_label.grid(row=4, column=1, columnspan=2, sticky="w", padx=8, pady=(4, 2))
+        self.btn_request_comp = accent_button(f, "REQUEST\nCOMPONENTS", self._request_components,
+                                              color=WARNING, width=14)
+        self.btn_request_comp.grid(row=4, column=3, sticky="n", padx=4, pady=(4, 2))
 
         tk.Frame(f, bg=TEXT_DIM, height=1).grid(row=5, column=0, columnspan=4,
                                                  sticky="ew", pady=6)
 
-        # Batch
-        styled_label(f, "Batch #:").grid(row=6, column=0, sticky="w", pady=4)
-        self.batch_entry = styled_entry(f, textvariable=self.batch_number, width=18)
-        self.batch_entry.grid(row=6, column=1, padx=8)
-        self.batch_entry.bind("<Return>", lambda e: self._scan_batch())
-        self.btn_scan_batch = accent_button(f, "SCAN / CONFIRM", self._scan_batch, width=18)
-        self.btn_scan_batch.grid(row=6, column=2, padx=4)
-        self.batch_indicator = styled_label(f, "[ ]", color=TEXT_DIM)
-        self.batch_indicator.grid(row=6, column=3, padx=6)
+        # Dynamic per-component container scan rows (populated in _build_container_scan_rows)
+        self._container_frame = tk.Frame(f, bg=PANEL_BG)
+        self._container_frame.grid(row=6, column=0, columnspan=4, sticky="ew", pady=2)
 
         # Equipment
         styled_label(f, "Equipment ID:").grid(row=7, column=0, sticky="w", pady=4)
@@ -423,6 +485,8 @@ class MESApp(tk.Tk):
             fg=TEXT_DIM,
         )
 
+        self._build_container_scan_rows(station)
+
         self.build_locked = True
         self.build_number_entry.config(state="disabled")
         self.btn_scan_build.config(state="disabled")
@@ -440,20 +504,76 @@ class MESApp(tk.Tk):
         }
         self.build_status_label.config(fg=color_map.get(status, TEXT))
 
-    def _scan_batch(self):
+    def _build_container_scan_rows(self, station: dict):
+        for w in self._container_frame.winfo_children():
+            w.destroy()
+        self._comp_scan_state.clear()
+        self._comp_scan_widgets.clear()
+        self.batch_locked = False
+
+        components = station.get("Components", [])
+        if not components:
+            styled_label(self._container_frame, "No components required.").grid(row=0, column=0, sticky="w")
+            self.batch_locked = True
+            return
+
+        for i, comp in enumerate(components):
+            var = tk.StringVar()
+            self._comp_scan_state.append({
+                "var": var,
+                "confirmed": False,
+                "drawing_number": comp["Drawing Number"],
+            })
+            lbl_text = f"{comp['Name']} [{comp['Drawing Number']}]:"
+            styled_label(self._container_frame, lbl_text).grid(row=i, column=0, sticky="w", pady=2, padx=(0, 4))
+            entry = styled_entry(self._container_frame, textvariable=var, width=18)
+            entry.grid(row=i, column=1, padx=8)
+            entry.bind("<Return>", lambda _, idx=i: self._scan_component_container(idx))
+            btn = accent_button(self._container_frame, "SCAN", lambda idx=i: self._scan_component_container(idx), width=12)
+            btn.grid(row=i, column=2, padx=4)
+            indicator = styled_label(self._container_frame, "[ ]", color=TEXT_DIM)
+            indicator.grid(row=i, column=3, padx=6)
+            self._comp_scan_widgets.append({"entry": entry, "btn": btn, "indicator": indicator})
+
+    def _scan_component_container(self, index: int):
         if not self._require_clockin():
             return
-        val = self.batch_number.get().strip()
-        if not val:
-            messagebox.showwarning("Missing", "Enter or scan a batch number.")
+        state   = self._comp_scan_state[index]
+        widgets = self._comp_scan_widgets[index]
+        container_id = state["var"].get().strip()
+        if not container_id:
+            messagebox.showwarning("Missing", "Enter or scan a Container ID.")
             return
-        row = self._log("BATCH_SCAN", "batch_number", val)
-        self.batch_locked = True
-        self.batch_entry.config(state="disabled")
-        self.btn_scan_batch.config(state="disabled")
-        self.batch_indicator.config(text="[OK]", fg=ACCENT2)
-        self._status(f"Batch {val} confirmed.")
+
+        record = lookup_container(container_id)
+        if record is None:
+            messagebox.showerror("Not Found", f"Container '{container_id}' not in inventory.")
+            widgets["indicator"].config(text="[??]", fg=DANGER)
+            return
+
+        required_dwg = state["drawing_number"]
+        actual_dwg   = record.get("Drawing Number", "").strip()
+        if actual_dwg != required_dwg:
+            messagebox.showwarning(
+                "DWG Mismatch",
+                f"Container {container_id}: drawing {actual_dwg}, expected {required_dwg}.",
+            )
+            widgets["indicator"].config(text="[DWG!]", fg=DANGER)
+            state["confirmed"] = False
+            return
+
+        state["confirmed"] = True
+        widgets["entry"].config(state="disabled")
+        widgets["btn"].config(state="disabled")
+        widgets["indicator"].config(text="[OK]", fg=ACCENT2)
+
+        row = self._log("CONTAINER_SCAN", "container_id", container_id)
+        self._status(f"Container {container_id} confirmed — {record.get('Description', '')}.")
         self._append_feed(row)
+
+        if all(s["confirmed"] for s in self._comp_scan_state):
+            self.batch_locked = True
+            self._status("All component containers confirmed.")
 
     def _scan_equip(self):
         if not self._require_clockin():
@@ -484,18 +604,48 @@ class MESApp(tk.Tk):
         self.btn_scan_build.config(state="normal")
         self.build_indicator.config(text="[ ]", fg=TEXT_DIM)
         self.build_status_label.config(fg=TEXT_DIM)
-        self.batch_number.set("")
-        self.equipment_id.set("")
+        for w in self._container_frame.winfo_children():
+            w.destroy()
+        self._comp_scan_state.clear()
+        self._comp_scan_widgets.clear()
         self.batch_locked = False
+        self.equipment_id.set("")
         self.equip_locked = False
-        self.batch_entry.config(state="normal")
         self.equip_entry.config(state="normal")
-        self.btn_scan_batch.config(state="normal")
         self.btn_scan_equip.config(state="normal")
-        self.batch_indicator.config(text="[ ]", fg=TEXT_DIM)
         self.equip_indicator.config(text="[ ]", fg=TEXT_DIM)
         self.parts_count.set(0)
         self._status("Job reset.")
+
+    def _request_components(self):
+        if not self._require_clockin():
+            return
+        if not self.build_locked:
+            messagebox.showwarning("No build", "Scan and confirm a Build Number first.")
+            return
+
+        station_name = self.station_id.get().strip()
+        station_num  = self.station_number.get().strip()
+        station_full = f"{station_name}_{station_num}" if station_num else station_name
+
+        station = next(
+            (p for p in self._build_order["Processes"] if p["Name"] == station_name), None
+        )
+        if station is None:
+            return
+
+        components = station.get("Components", [])
+        if not components:
+            messagebox.showinfo("No components", "No components listed for this process.")
+            return
+
+        for comp in components:
+            write_component_request(comp["Drawing Number"], comp["Name"], station_full)
+
+        names = ", ".join(c["Name"] for c in components)
+        row = self._log("COMP_REQUEST", "components", f"{names}  →  {station_full}")
+        self._status(f"Requested {len(components)} component(s): {names}")
+        self._append_feed(row)
 
     # ------------------------------------------------------------------
     # Section: Production cycle
@@ -533,7 +683,9 @@ class MESApp(tk.Tk):
             "timestamp":    datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
             "operator_id":  self.operator_id.get().strip(),
             "build_number": self.build_number.get().strip(),
-            "batch_number": self.batch_number.get().strip(),
+            "batch_number": ",".join(
+                s["var"].get().strip() for s in self._comp_scan_state if s["confirmed"]
+            ),
             "event_type":   event_type,
             "field":        field,
             "value":        value,
@@ -550,11 +702,11 @@ class MESApp(tk.Tk):
             messagebox.showwarning("Job incomplete", "Scan and confirm the Build Number first.")
             return False
         if not self.batch_locked:
-            messagebox.showwarning("Job incomplete", "Confirm the batch number first.")
+            messagebox.showwarning("Job incomplete", "Confirm all component containers first.")
             return False
-        if not self.equip_locked:
-            messagebox.showwarning("Job incomplete", "Confirm the equipment ID first.")
-            return False
+        # if not self.equip_locked:
+        #     messagebox.showwarning("Job incomplete", "Confirm the equipment ID first.")
+        #     return False
         return True
 
     def _start_cycle(self):
@@ -668,6 +820,126 @@ class MESApp(tk.Tk):
             lbl.grid(row=0, column=col, padx=4, pady=2)
             col += 1
 
+    
+    # ------------------------------------------------------------------
+    # Section: Print labels for containers
+    # ------------------------------------------------------------------
+    def _build_print_labels_section(self, parent):
+        outer, f = section_frame(parent, "PRINT CONTAINER LABELS")
+        outer.pack(fill="both", expand=True)
+
+        
+        self.btn_print_unused_partials = accent_button(f, "PRINT UNUSED PARTIALS LABEL", self._print_unused_partials, width=30)
+        self.btn_print_unused_partials.grid(row=0, column=0, padx=4)
+        
+        self.btn_print_finished_parts = accent_button(f, "PRINT FINISHED PARTS LABEL", self._print_finished_parts, width=30)
+        self.btn_print_finished_parts.grid(row=1, column=0, padx=4)
+
+        self.btn_print_scrap = accent_button(f, "PRINT SCRAP LABEL", self._print_scrap, width=30)
+        self.btn_print_scrap.grid(row=2, column=0, padx=4)
+
+        def val_label(var):
+            return tk.Label(f, textvariable=var, bg=PANEL_BG, fg=ACCENT,
+                            font=("Courier New", 10))
+
+        styled_label(f, "Drawing Number:").grid(row=3, column=0, sticky="w", padx=(0, 4), pady=2)
+        val_label(self.lbl_drawing_var).grid(row=3, column=1, sticky="w", padx=8)
+        styled_label(f, "Description:").grid(row=4, column=0, sticky="w", padx=(0, 4), pady=2)
+        val_label(self.lbl_description_var).grid(row=4, column=1, sticky="w", padx=8)
+        styled_label(f, "Vendor:").grid(row=5, column=0, sticky="w", padx=(0, 4), pady=2)
+        val_label(self.lbl_vendor_var).grid(row=5, column=1, sticky="w", padx=8)
+        styled_label(f, "Batch:").grid(row=6, column=0, sticky="w", padx=(0, 4), pady=2)
+        val_label(self.lbl_batch_var).grid(row=6, column=1, sticky="w", padx=8)
+
+    def _print_unused_partials(self):
+        if not self._require_clockin():
+            return
+        if not self.build_locked:
+            messagebox.showwarning("No build", "Scan and confirm a Build Number first.")
+            return
+        station_name = self.station_id.get().strip()
+        station = next(
+            (p for p in self._build_order["Processes"] if p["Name"] == station_name), None
+        )
+        if station is None:
+            return
+        output_comp = next(
+            (c for c in station.get("Components", [])
+             if c["Name"].lower().startswith("output")),
+            None,
+        )
+        if output_comp is None:
+            messagebox.showwarning("Not found", "No output component found for this process.")
+            return
+        self.lbl_drawing_var.set(output_comp["Drawing Number"])
+        self.lbl_description_var.set(output_comp["Name"])
+        self._status(f"Label: {output_comp['Name']} [{output_comp['Drawing Number']}]")
+        self.lbl_vendor_var.set("Internal")
+        self.lbl_batch_var.set(self.build_number.get().strip())
+
+    def _print_finished_parts(self):
+        if not self._require_clockin():
+            return
+        if not self.build_locked:
+            messagebox.showwarning("No build", "Scan and confirm a Build Number first.")
+            return
+        station_name = self.station_id.get().strip()
+        station = next(
+            (p for p in self._build_order["Processes"] if p["Name"] == station_name), None
+        )
+        if station is None:
+            return
+        
+        finished_comp_number = self._build_order["Top Assembly Drawing Number"]
+        finished_comp_name = self._build_order["Top Assembly Drawing Name"]
+
+        self.lbl_drawing_var.set(finished_comp_number)
+        self.lbl_description_var.set(finished_comp_name)
+        self._status(f"Label: {finished_comp_name} [{finished_comp_number}]")
+        self.lbl_vendor_var.set("Internal")
+        self.lbl_batch_var.set(self.build_number.get().strip())
+
+
+        # finished_comp = next(
+        #     (c for c in station.get("Components", [])
+        #      if c["Name"].lower().startswith("scrap")),
+        #     None,
+        # )
+        # if scrap_comp is None:
+        #     messagebox.showwarning("Not found", "No scrap component found for this process.")
+        #     return
+        # self.lbl_drawing_var.set(scrap_comp["Drawing Number"])
+        # self.lbl_description_var.set(scrap_comp["Name"])
+        # self._status(f"Label: {scrap_comp['Name']} [{scrap_comp['Drawing Number']}]")
+        # self.lbl_vendor_var.set("Internal")
+        # self.lbl_batch_var.set(self.build_number.get().strip())
+
+    def _print_scrap(self):
+        if not self._require_clockin():
+            return
+        if not self.build_locked:
+            messagebox.showwarning("No build", "Scan and confirm a Build Number first.")
+            return
+        station_name = self.station_id.get().strip()
+        station = next(
+            (p for p in self._build_order["Processes"] if p["Name"] == station_name), None
+        )
+        if station is None:
+            return
+        scrap_comp = next(
+            (c for c in station.get("Components", [])
+             if c["Name"].lower().startswith("scrap")),
+            None,
+        )
+        if scrap_comp is None:
+            messagebox.showwarning("Not found", "No scrap component found for this process.")
+            return
+        self.lbl_drawing_var.set(scrap_comp["Drawing Number"])
+        self.lbl_description_var.set(scrap_comp["Name"])
+        self._status(f"Label: {scrap_comp['Name']} [{scrap_comp['Drawing Number']}]")
+        self.lbl_vendor_var.set("Internal")
+        self.lbl_batch_var.set(self.build_number.get().strip())
+
     # ------------------------------------------------------------------
     # Section: Event feed / log viewer
     # ------------------------------------------------------------------
@@ -696,12 +968,13 @@ class MESApp(tk.Tk):
 
     def _append_feed(self, row: dict):
         tag_map = {
-            "DEFECT":      "defect",
-            "CYCLE_START": "cycle",
-            "CYCLE_STOP":  "cycle",
-            "CLOCK_IN":    "clock",
-            "CLOCK_OUT":   "clock",
-            "BUILD_SCAN":  "event",
+            "DEFECT":       "defect",
+            "CYCLE_START":  "cycle",
+            "CYCLE_STOP":   "cycle",
+            "CLOCK_IN":     "clock",
+            "CLOCK_OUT":    "clock",
+            "BUILD_SCAN":   "event",
+            "COMP_REQUEST": "warning",
         }
         event_tag = tag_map.get(row["event_type"], "event")
         self.feed_text.config(state="normal")

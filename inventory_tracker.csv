@@ -1,3 +1,10 @@
 Container ID,Drawing Number,Description,Vendor,Batch,Quantity,Units,Status
 10001,DRW013_AA,HDPE,AnyPlastic,b100f100,100,kg,available
-10002,DRW013_AA,HDPE,AnyPlastic,b100f102,50.0,kg,available
+10002,DRW013_AA,HDPE,AnyPlastic,b100f102,50.0,kg,in use - tank_blow_molding_1
+10003,DRW013_AA,HDPE,AnyPlastic,b100f200,100.0,kg,available
+10004,DRW014_AA,fitting cut off body,FittingsCo,abc12300,790.0,each,available
+10005,DRW015_AA,plugged valve pin,valvesco,444b1000,3950.0,each,available
+10006,DRW018_AA,fitting cap,FittingsCo,abf14300,495,each,available
+10007,DRW019_AA,disc,DiscCo,d100,248,each,available
+10008,DRW020_AA,valve box with nipple,ValvesCo,v100500,990,each,available
+10009,DRW021_AA,suction diaphragm,ACME,axz1f500,707,each,available

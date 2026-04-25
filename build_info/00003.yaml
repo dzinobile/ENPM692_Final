@@ -1,0 +1,68 @@
+Requester: dan
+Name: subassemblies
+Top Assembly Drawing Number: DRW002_AA
+Top Assembly Drawing Name: Subassembly
+Quantity: 10
+Start Date: 25-Apr-2026
+End Date: 25-Apr-2026
+Status: Scheduled
+Processes:
+- Name: cut off switch assembly
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: fitting cut off body
+    Drawing Number: DRW014_AA
+    Quantity: 10
+    Units: each
+  - Name: plugged valve pin
+    Drawing Number: DRW015_AA
+    Quantity: 20
+    Units: each
+  - Name: scrap - cut off switch assembly
+    Drawing Number: SCR001
+    Quantity: 0
+    Units: kg
+- Name: duro mist spray nozzle
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: output - cut off switch assembly
+    Drawing Number: DRW022_AA
+    Quantity: 0
+    Units: each
+  - Name: scrap - duro mist spray nozzle
+    Drawing Number: SCR002
+    Quantity: 0
+    Units: kg
+  - Name: fitting cap
+    Drawing Number: DRW018_AA
+    Quantity: 10
+    Units: each
+  - Name: disc
+    Drawing Number: DRW019_AA
+    Quantity: 10
+    Units: each
+- Name: valve box and pressure chamber assembly
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: output - duro mist spray nozzle
+    Drawing Number: DRW023_AA
+    Quantity: 0
+    Units: each
+  - Name: scrap - valve box and pressure chamber assembly
+    Drawing Number: SCR003
+    Quantity: 0
+    Units: kg
+  - Name: valve box with nipple
+    Drawing Number: DRW020_AA
+    Quantity: 10
+    Units: each
+  - Name: suction diaphragm
+    Drawing Number: DRW021_AA
+    Quantity: 10
+    Units: each
