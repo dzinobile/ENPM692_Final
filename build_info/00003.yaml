@@ -1,0 +1,109 @@
+Requester: Daniel Zinobile
+Name: Full Backpack Assemblies
+Top Assembly Drawing Number: DRW030_AA
+Top Assembly Drawing Name: Backpack Assembly
+Quantity: 10
+Start Date: 01-Jun-2026
+End Date: 01-Jun-2026
+Status: Scheduled
+Processes:
+- Name: assembly 1
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: Tank
+    Drawing Number: DRW013_AA
+    Quantity: 10
+    Units: each
+  - Name: bearing bush
+    Drawing Number: DRW031_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 2
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: travel limiter
+    Drawing Number: DRW032_AA
+    Quantity: 10
+    Units: each
+  - Name: nut
+    Drawing Number: DRW033_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 3
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: valve box
+    Drawing Number: DRW034_AA
+    Quantity: 10
+    Units: each
+  - Name: clamp
+    Drawing Number: DRW035_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 4
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: pump barrel
+    Drawing Number: DRW036_AA
+    Quantity: 10
+    Units: each
+  - Name: piston crank lever assembly
+    Drawing Number: DRW037_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 5
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: pump barrel assembly
+    Drawing Number: DRW038_AA
+    Quantity: 10
+    Units: each
+  - Name: dust seal
+    Drawing Number: DRW039_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 6
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: delivery hose
+    Drawing Number: DRW040_AA
+    Quantity: 10
+    Units: each
+  - Name: hose clip
+    Drawing Number: DRW041_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 7
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: cotter pin
+    Drawing Number: DRW042_AA
+    Quantity: 10
+    Units: each
+  - Name: nut 2
+    Drawing Number: DRW043_AA
+    Quantity: 10
+    Units: each
+- Name: assembly 8
+  Parts Completed: 0
+  Total Parts: 10
+  Status: Scheduled
+  Components:
+  - Name: shoulder strap
+    Drawing Number: DRW044_AA
+    Quantity: 20
+    Units: each
