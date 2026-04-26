@@ -248,6 +248,24 @@ def section_frame(parent, title):
     return outer, inner
 
 
+def scrollable_column(parent, padx=(0, 0)):
+    outer = tk.Frame(parent, bg=BG)
+    outer.pack(side="left", fill="both", expand=True, padx=padx)
+    canvas = tk.Canvas(outer, bg=BG, highlightthickness=0)
+    sb = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=sb.set)
+    sb.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+    frame = tk.Frame(canvas, bg=BG)
+    win = canvas.create_window((0, 0), window=frame, anchor="nw")
+    frame.bind("<Configure>", lambda _: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda e: canvas.itemconfig(win, width=e.width))
+    canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>",
+        lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")))
+    canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
+    return frame
+
+
 class InventoryMESApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -368,10 +386,8 @@ class InventoryMESApp(tk.Tk):
         body = tk.Frame(self, bg=BG)
         body.pack(fill="both", expand=True, padx=8, pady=6)
 
-        left  = tk.Frame(body, bg=BG)
-        right = tk.Frame(body, bg=BG)
-        left.pack(side="left", fill="both", expand=True, padx=(0, 4))
-        right.pack(side="right", fill="both", expand=True, padx=(4, 0))
+        left  = scrollable_column(body, padx=(0, 4))
+        right = scrollable_column(body, padx=(4, 0))
 
         self._build_clock_section(left)
         self._build_container_section(left)

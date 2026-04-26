@@ -1,0 +1,94 @@
+Name: Backpack Assembly
+Per Unit Weight: 3
+Container Weight: 0.5
+Processes:
+  - Name: assembly 1
+    Parts Per Hour: 12
+    Components:
+    - Name: Tank
+      Drawing Number: DRW013_AA
+      Quantity: 1
+      Units: each
+    - Name: bearing bush
+      Drawing Number: DRW031_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 2
+    Parts Per Hour: 12
+    Components: 
+    - Name: travel limiter
+      Drawing Number: DRW032_AA
+      Quantity: 1
+      Units: each
+    - Name: nut
+      Drawing Number: DRW033_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 3
+    Parts Per Hour: 12
+    Components:
+    - Name: valve box
+      Drawing Number: DRW034_AA
+      Quantity: 1
+      Units: each
+    - Name: clamp
+      Drawing Number: DRW035_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 4
+    Parts Per Hour: 12
+    Components: 
+    - Name: pump barrel
+      Drawing Number: DRW036_AA
+      Quantity: 1
+      Units: each
+    - Name: piston crank lever assembly
+      Drawing Number: DRW037_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 5
+    Parts Per Hour: 12
+    Components:
+    - Name: pump barrel assembly
+      Drawing Number: DRW038_AA
+      Quantity: 1
+      Units: each
+    - Name: dust seal
+      Drawing Number: DRW039_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 6
+    Parts Per Hour: 12
+    Components:
+    - Name: delivery hose
+      Drawing Number: DRW040_AA
+      Quantity: 1
+      Units: each
+    - Name: hose clip
+      Drawing Number: DRW041_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 7
+    Parts Per Hour: 12
+    Components:
+    - Name: cotter pin
+      Drawing Number: DRW042_AA
+      Quantity: 1
+      Units: each
+    - Name: nut 2
+      Drawing Number: DRW043_AA
+      Quantity: 1
+      Units: each
+  - Name: assembly 8
+    Parts Per Hour: 12
+    Components:
+    - Name: shoulder strap
+      Drawing Number: DRW044_AA
+      Quantity: 2
+      Units: each
+
+
+    
+
+
+ 

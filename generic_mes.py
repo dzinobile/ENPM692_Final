@@ -168,6 +168,24 @@ def section_frame(parent, title):
     return outer, inner
 
 
+def scrollable_column(parent, padx=(0, 0)):
+    outer = tk.Frame(parent, bg=BG)
+    outer.pack(side="left", fill="both", expand=True, padx=padx)
+    canvas = tk.Canvas(outer, bg=BG, highlightthickness=0)
+    sb = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=sb.set)
+    sb.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+    frame = tk.Frame(canvas, bg=BG)
+    win = canvas.create_window((0, 0), window=frame, anchor="nw")
+    frame.bind("<Configure>", lambda _: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda e: canvas.itemconfig(win, width=e.width))
+    canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>",
+        lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")))
+    canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
+    return frame
+
+
 # ---------------------------------------------------------------------------
 # Main application
 # ---------------------------------------------------------------------------
@@ -251,10 +269,8 @@ class MESApp(tk.Tk):
         body = tk.Frame(self, bg=BG)
         body.pack(fill="both", expand=True, padx=8, pady=6)
 
-        left  = tk.Frame(body, bg=BG)
-        right = tk.Frame(body, bg=BG)
-        left.pack(side="left", fill="both", expand=True, padx=(0, 4))
-        right.pack(side="right", fill="both", expand=True, padx=(4, 0))
+        left  = scrollable_column(body, padx=(0, 4))
+        right = scrollable_column(body, padx=(4, 0))
 
         # left column
         self._build_clock_section(left)
@@ -670,9 +686,15 @@ class MESApp(tk.Tk):
         self.cycle_status = styled_label(f, "Cycle stopped.", color=TEXT_DIM)
         self.cycle_status.grid(row=1, column=0, columnspan=5, sticky="w", pady=(6, 0))
 
-        styled_label(f, "Notes:").grid(row=2, column=0, sticky="w", pady=(8, 0))
+        self.equip_info_var = tk.StringVar(value="")
+        self.equip_info_label = tk.Label(f, textvariable=self.equip_info_var,
+                                         bg=PANEL_BG, fg=ACCENT,
+                                         font=("Courier New", 9), anchor="w")
+        self.equip_info_label.grid(row=2, column=0, columnspan=5, sticky="ew", pady=(4, 0))
+
+        styled_label(f, "Notes:").grid(row=3, column=0, sticky="w", pady=(8, 0))
         notes_entry = styled_entry(f, textvariable=self.notes_var, width=48)
-        notes_entry.grid(row=2, column=1, columnspan=4, sticky="ew", padx=4, pady=(8, 0))
+        notes_entry.grid(row=3, column=1, columnspan=4, sticky="ew", padx=4, pady=(8, 0))
 
     # ------------------------------------------------------------------
     # Core logger
@@ -735,6 +757,25 @@ class MESApp(tk.Tk):
         self._status(f"Cycle stopped after {elapsed}s.")
         self._append_feed(row)
 
+    def _read_equipment_info(self) -> str:
+        equip_id = self.equipment_id.get().strip()
+        if not equip_id:
+            return ""
+        path = os.path.join(BASE_DIR, "equipment", f"{equip_id}.csv")
+        if not os.path.exists(path):
+            return ""
+        with open(path, newline="") as fh:
+            rows = list(csv.DictReader(fh))
+        if not rows:
+            return ""
+        last = rows[-1]
+        parts = [
+            f"{k}: {v}"
+            for k, v in last.items()
+            if k and k.lower() != "timestamp" and v.strip()
+        ]
+        return "  |  ".join(parts)
+
     def _increment_part(self):
         if not self.cycle_running:
             messagebox.showwarning("No cycle", "Start a production cycle first.")
@@ -752,6 +793,8 @@ class MESApp(tk.Tk):
                     self.build_quantity.set(f"{new_count} / {station['Total Parts']}")
                     self.build_status.set(station["Status"])
                     self._refresh_build_status_color(station["Status"])
+
+        self.equip_info_var.set(self._read_equipment_info())
 
         row = self._log("PART_COUNT", "parts_produced", str(new_count))
         self._append_feed(row)

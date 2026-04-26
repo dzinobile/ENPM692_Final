@@ -73,6 +73,24 @@ def section_frame(parent, title):
     return outer, inner
 
 
+def scrollable_column(parent, padx=(0, 0)):
+    outer = tk.Frame(parent, bg=BG)
+    outer.pack(side="left", fill="both", expand=True, padx=padx)
+    canvas = tk.Canvas(outer, bg=BG, highlightthickness=0)
+    sb = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+    canvas.configure(yscrollcommand=sb.set)
+    sb.pack(side="right", fill="y")
+    canvas.pack(side="left", fill="both", expand=True)
+    frame = tk.Frame(canvas, bg=BG)
+    win = canvas.create_window((0, 0), window=frame, anchor="nw")
+    frame.bind("<Configure>", lambda _: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda e: canvas.itemconfig(win, width=e.width))
+    canvas.bind("<Enter>", lambda _: canvas.bind_all("<MouseWheel>",
+        lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")))
+    canvas.bind("<Leave>", lambda _: canvas.unbind_all("<MouseWheel>"))
+    return frame
+
+
 # ---------------------------------------------------------------------------
 # Business logic helpers
 # ---------------------------------------------------------------------------
@@ -165,10 +183,11 @@ def check_materials(bom: dict, quantity: int, inventory: dict) -> list[dict]:
 
 
 def calculate_end_date(start: datetime, bom: dict, quantity: int) -> datetime:
-    total_hours = 0
-    for proc in bom.get("Processes", []):
-        pph = proc.get("Parts Per Hour", 1)
-        total_hours += math.ceil(quantity / pph)
+    hours_per_proc = [
+        math.ceil(quantity / proc.get("Parts Per Hour", 1))
+        for proc in bom.get("Processes", [])
+    ]
+    total_hours = max(hours_per_proc) if hours_per_proc else 0
     return start + timedelta(hours=total_hours)
 
 
@@ -249,10 +268,8 @@ class BuildRequestApp(tk.Tk):
         body = tk.Frame(self, bg=BG)
         body.pack(fill="both", expand=True, padx=8, pady=6)
 
-        left  = tk.Frame(body, bg=BG)
-        right = tk.Frame(body, bg=BG)
-        left.pack(side="left", fill="both", expand=True, padx=(0, 4))
-        right.pack(side="right", fill="both", expand=True, padx=(4, 0))
+        left  = scrollable_column(body, padx=(0, 4))
+        right = scrollable_column(body, padx=(4, 0))
 
         self._build_request_section(left)
         self._build_bom_section(left)
@@ -498,7 +515,7 @@ class BuildRequestApp(tk.Tk):
 
         end        = calculate_end_date(start, self._bom, quantity)
         build_num  = next_build_number()
-        path       = generate_build_yaml(build_num, requester, name, ta_number, start, end, self._bom)
+        path       = generate_build_yaml(build_num, requester, name, ta_number, quantity, start, end, self._bom)
 
         self._log(f"Build order created: {path}", "ok")
         self._log(f"  Build #:    {build_num}", "info")
