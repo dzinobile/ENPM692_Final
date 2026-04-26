@@ -11,7 +11,7 @@ Container ID,Drawing Number,Description,Vendor,Batch,Quantity,Units,Status
 09997,DRW032_AA,travel limiter,McMaster,324324,100,pcs,available
 09998,DRW031_AA,bearing bush,McMaster,40001,100,pcs,available
 09999,DRW044_AA,shoulder strap,StrapCo,s1444n5,500,pcs,available
-10000,DRW042_AA,cotter pin,PinCo,p5234324,1000,pcs,available
-10001,DRW043_AA,nut 2,McMaster,43331333,1000,pcs,available
+10000,DRW042_AA,cotter pin,PinCo,p5234324,1000,pcs,in use - assembly 7_1
+10001,DRW043_AA,nut 2,McMaster,43331333,1000,pcs,in use - assembly 7_1
 10002,DRW013_AA,HDPE,PlasticCo,b100f200,90.0,kg,available
 10003,DRW001_AA,Tank,Internal,00002,10,pcs,available

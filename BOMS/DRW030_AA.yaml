@@ -79,6 +79,11 @@ Processes:
       Drawing Number: DRW043_AA
       Quantity: 1
       Units: each
+    - Name: scrap- sprayer testing
+      Drawing Number: SCR004.yaml
+      Quantity: 0
+      Units: each
+
   - Name: assembly 8
     Parts Per Hour: 12
     Components:

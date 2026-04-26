@@ -1,0 +1,5 @@
+timestamp,operator_id,event_type,field,value,notes
+2026-04-26 17:43:38.765,1111,CLOCK_IN,operator_id,1111,
+2026-04-26 17:44:36.705,1111,CONTAINER_SCAN,container_id,10000  cotter pin  [DRW042_AA],
+2026-04-26 17:45:24.188,1111,CONTAINER_SCAN,container_id,10001  nut 2  [DRW043_AA],
+2026-04-26 18:23:31.423,1111,CLOCK_IN,operator_id,1111,

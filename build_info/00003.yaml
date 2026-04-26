@@ -5,7 +5,7 @@ Top Assembly Drawing Name: Backpack Assembly
 Quantity: 10
 Start Date: 01-Jun-2026
 End Date: 01-Jun-2026
-Status: Scheduled
+Status: In Progress
 Processes:
 - Name: assembly 1
   Parts Completed: 0
@@ -86,9 +86,9 @@ Processes:
     Quantity: 10
     Units: each
 - Name: assembly 7
-  Parts Completed: 0
+  Parts Completed: 2
   Total Parts: 10
-  Status: Scheduled
+  Status: In Progress
   Components:
   - Name: cotter pin
     Drawing Number: DRW042_AA
