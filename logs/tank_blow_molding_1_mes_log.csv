@@ -19,3 +19,5 @@ timestamp,operator_id,build_number,batch_number,event_type,field,value,notes
 2026-04-25 09:37:28.286,111,00002,10002,PART_COUNT,parts_produced,5,
 2026-04-25 09:37:28.959,111,00002,10002,CYCLE_STOP,cycle,elapsed_sec=2 parts=5,
 2026-04-25 09:37:41.649,111,00002,10002,CLOCK_OUT,operator_id,111,
+2026-04-25 15:51:01.747,1,,,CLOCK_IN,operator_id,1,
+2026-04-25 15:51:06.758,1,00002,,BUILD_SCAN,build_number,00002,

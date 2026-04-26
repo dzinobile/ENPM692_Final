@@ -1,0 +1,2 @@
+timestamp,operator_id,build_number,batch_number,event_type,field,value,notes
+2026-04-25 15:53:36.301,1,,,CLOCK_IN,operator_id,1,

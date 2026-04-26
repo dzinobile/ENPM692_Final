@@ -8,3 +8,4 @@ Container ID,Drawing Number,Description,Vendor,Batch,Quantity,Units,Status
 10007,DRW019_AA,disc,DiscCo,d100,248,each,available
 10008,DRW020_AA,valve box with nipple,ValvesCo,v100500,990,each,available
 10009,DRW021_AA,suction diaphragm,ACME,axz1f500,707,each,available
+10010,DRW013_AA,HDPE - BLUE,AnyPlastic,1,100.0,kg,available

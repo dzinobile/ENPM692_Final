@@ -1,6 +1,6 @@
 Name: Subassembly
 Per Unit Weight: 2
-Container Weight: 10
+Container Weight: 0.5
 Processes:
   - Name: cut off switch assembly
     Parts Per Hour: 12

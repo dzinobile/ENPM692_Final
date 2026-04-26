@@ -5,3 +5,5 @@ timestamp,operator_id,build_number,batch_number,event_type,field,value,notes
 2026-04-25 14:06:41.720,1,00003,,BUILD_SCAN,build_number,00003,
 2026-04-25 14:08:02.047,1,,,CLOCK_IN,operator_id,1,
 2026-04-25 14:08:05.812,1,00003,,BUILD_SCAN,build_number,00003,
+2026-04-25 15:54:17.757,1,,,CLOCK_IN,operator_id,1,
+2026-04-25 15:54:24.984,1,00003,,BUILD_SCAN,build_number,00003,

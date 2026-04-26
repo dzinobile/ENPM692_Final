@@ -24,3 +24,8 @@ timestamp,operator_id,event_type,field,value,notes
 2026-04-24 14:08:58.410,1,CONTAINER_SCAN,container_id,10002  HDPE  (check-in),
 2026-04-24 14:09:10.379,1,SCALE_SCAN,scale_id,SCL01  reading=50.0 kg,
 2026-04-24 14:09:39.562,1,CHECKIN,container_id,10002  new qty=50.0 kg  [HDPE],
+2026-04-25 15:20:52.432,1,CLOCK_IN,operator_id,1,
+2026-04-25 15:21:10.893,1,CONTAINER_SCAN,container_id,10010,
+2026-04-25 15:24:17.330,1,SCALE_SCAN,scale_id,SCL01  raw=110.0 kg  est=100.0 kg,
+2026-04-25 15:24:59.136,1,CONTAINER_ADD,container_id,10010  HDPE - BLUE  100.0 kg,
+2026-04-25 15:34:52.693,1,SCALE_SCAN,scale_id,SCL01  raw=110.0 kg  est=156 pcs,
