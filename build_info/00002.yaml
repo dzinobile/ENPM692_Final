@@ -1,0 +1,18 @@
+Requester: Daniel Zinobile
+Name: Tank Resupply
+Top Assembly Drawing Number: DRW001_AA
+Top Assembly Drawing Name: Tank
+Quantity: 10
+Start Date: 01-Jun-2026
+End Date: 01-Jun-2026
+Status: Complete
+Processes:
+- Name: tank blow molding
+  Parts Completed: 10
+  Total Parts: 10
+  Status: Complete
+  Components:
+  - Name: HDPE
+    Drawing Number: DRW013_AA
+    Quantity: 8.0
+    Units: kg

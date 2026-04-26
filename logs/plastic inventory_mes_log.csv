@@ -1,0 +1,10 @@
+timestamp,operator_id,event_type,field,value,notes
+2026-04-26 15:38:02.512,1111,CLOCK_IN,operator_id,1111,
+2026-04-26 15:38:33.644,1111,CONTAINER_SCAN,container_id,10002,
+2026-04-26 15:38:55.454,1111,SCALE_SCAN,scale_id,SCL01  raw=110.0 kg  est=100.0 kg,
+2026-04-26 15:38:58.576,1111,CONTAINER_ADD,container_id,10002  HDPE  100.0 kg,
+2026-04-26 15:40:56.385,1111,CONTAINER_SCAN,container_id,10002  HDPE  [DRW013_AA],
+2026-04-26 15:42:55.980,1111,CONTAINER_SCAN,container_id,10002  HDPE  (check-in),
+2026-04-26 15:44:31.079,1111,SCALE_SCAN,scale_id,SCL03  raw=100.0 kg  est=90.0 kg,
+2026-04-26 15:44:40.735,1111,CHECKIN,container_id,10002  new qty=90.0 kg  [HDPE],
+2026-04-26 15:44:52.156,1111,CLOCK_OUT,operator_id,1111,

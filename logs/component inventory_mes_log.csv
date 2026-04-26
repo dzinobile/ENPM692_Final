@@ -1,0 +1,5 @@
+timestamp,operator_id,event_type,field,value,notes
+2026-04-26 15:45:16.703,1111,CLOCK_IN,operator_id,1111,
+2026-04-26 15:45:24.862,1111,CONTAINER_SCAN,container_id,10003,
+2026-04-26 15:45:45.608,1111,SCALE_SCAN,scale_id,SCL02  raw=7.5 kg  est=10 pcs,
+2026-04-26 15:45:47.138,1111,CONTAINER_ADD,container_id,10003  Tank  10 pcs,
