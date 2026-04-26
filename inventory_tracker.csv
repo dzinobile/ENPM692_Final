@@ -1,5 +1,17 @@
 Container ID,Drawing Number,Description,Vendor,Batch,Quantity,Units,Status
+09988,DRW041_AA,hose clip,HoseCo,j94353345,100,pcs,available
+09989,DRW040_AA,delivery hose,HoseCo,h4394,100,pcs,available
+09990,DRW039_AA,dust seal,McMaster,4385435,100,pcs,available
+09991,DRW038_AA,pump barrel assembly,PumpCo,f4598435,100,pcs,available
+09992,DRW037_AA,piston crank lever assembly,CrankCo,49832098432,100,pcs,available
+09993,DRW036_AA,pump barrel,PumpCo,f9459453,100,pcs,available
+09994,DRW035_AA,clamp,McMaster,66464363,100,pcs,available
+09995,DRW034_AA,valve box,Internal,00012,100,pcs,available
+09996,DRW033_AA,nut,McMaster,34953405,100,pcs,available
+09997,DRW032_AA,travel limiter,McMaster,324324,100,pcs,available
+09998,DRW031_AA,bearing bush,McMaster,40001,100,pcs,available
 09999,DRW044_AA,shoulder strap,StrapCo,s1444n5,500,pcs,available
 10000,DRW042_AA,cotter pin,PinCo,p5234324,1000,pcs,available
 10001,DRW043_AA,nut 2,McMaster,43331333,1000,pcs,available
-
+10002,DRW013_AA,HDPE,PlasticCo,b100f200,90.0,kg,available
+10003,DRW001_AA,Tank,Internal,00002,10,pcs,available
