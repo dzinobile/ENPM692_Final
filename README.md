@@ -16,7 +16,7 @@ This system provides the following benefits:
 4. All production runs begin by requesting a build of a specified part or assembly. The request is rejected if there is not enough available inventory.
 5. All production and inventory workers sign into MES stations that log detailed, timestamped information with every action they take, and prevent discrepancies with entered information. 
 
-## System Components
+## Data Files
 ### Inventory Tracker
 The inventory tracker is a csv file where each line represents a unique container and stores the following information about the contained components/subassemblies: 
 - Drawing Number
@@ -49,5 +49,30 @@ For each process, the following information is included:
 - Production rate (parts per hour)
 - Name, drawing number, quantity, and quantity units for each component needed at that process
 
+### Equipment Outputs
+Production equipment and inventory scales would log data continuously to csv files within the equipment folder. These files are named after the equipment ID, which is on a bar code label on the equipment. Scanning the bar code allows the MES system to access the latest readings from this equipment. This logged data can also be useful for troubleshooting issues later on. 
+
+### Station Logs
+Station logs are csv files stored in the logs folder. These files are named according to station ID and station number. Logs are kept both for production MES screens and inventory MES screens. The files store a new timestamped line with each action that occurs when operating the MES system. This provides traceability for who was working at a certain process, what build they were working on, what container of material they were working with, or who checked a container in or out of inventory, and so on.
+
+### Component Requests
+The component requests file is a csv file that allows the inventory stations to see components requested by the process stations. These requests just contain the component drawing number, description, station requesting it, and request status. They are initially set to not complete, and then marked complete once the inventory manager checks out a container of that material.
+
+## MES Interfaces
 ### Build Request MES Screen
-The build request screen is used by a production manager to request a build. The production manager inputs their name, the drawing number of the desired product or component, name of the build, quantity needed, and desired start date. The system 
+The build request screen is used by a production manager to request a build. The production manager inputs their name, the drawing number of the desired product or component, name of the build, quantity needed, and desired start date. The system reads from the associated drawing, determines quantity of each component is required, and reads the inventory tracker to confirm there are enough available. If so, it generates a new build order file with all of the relevant information.
+
+### Inventory MES Screen
+The inventory MES screen allows an inventory manager (IM) to sign in and take the following actions:
+- Add New Container - The IM prints a new container ID and applies it the container. They then scan the container ID, all other information, and weigh the container, and then add the new container to the inventory tracker.
+- Check Out Container - The IM recieves component requests through the MES system. He selects a request, scans a container of the appropriate material, and checks it out so it can be delivered to the required station. If the scanned container ID does not match the requested material, it is rejected. When the material is checked out, its status in the inventory tracker is updated to in use - [station ID / number].
+- Check In Container - After a container is checked out, it may be partially used and then checked back in. The IM recieves the partially used container, scans the ID, weighs it to get an updated quantity, and checks it back in. This updates the status of the container in the inventory tracker to available. 
+
+### Production MES Screen
+The production MES screen allows an operator to sign in to a station, request components, build parts, and send scrap or completed parts to inventory for storage. The operator must scan a build order, container IDs of their components, and equipment ID, which allows the MES system to:
+- Confirm station is required for build
+- Retrieve list of components for that station
+- Confirm recieved containers contain the required components
+- Print information labels for scrap/finished parts containers that are sent to inventory
+- Update the build order file with build progress in real time
+- Access equipment output data
