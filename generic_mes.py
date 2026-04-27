@@ -897,39 +897,14 @@ class MESApp(tk.Tk):
         self.btn_request_trolley = accent_button(f, "REQUEST TROLLEY", self._request_trolley, width=20)
         self.btn_request_trolley.grid(row=7, column=0, padx=4)
 
-        self.btn_request_bin = accent_button(f, "REQUEST BIN", self._request_bin, width=20)
-        self.btn_request_bin.grid(row=7, column=1, padx=4)
+        self.btn_request_robot = accent_button(f, "REQUEST ROBOT", self._request_robot, width=20)
+        self.btn_request_robot.grid(row=7, column=1, padx=4)
 
     def _request_trolley(self):
         return
     
-    def _request_bin(self):
+    def _request_robot(self):
         return
-    # def _print_unused_partials(self):
-    #     if not self._require_clockin():
-    #         return
-    #     if not self.build_locked:
-    #         messagebox.showwarning("No build", "Scan and confirm a Build Number first.")
-    #         return
-    #     station_name = self.station_id.get().strip()
-    #     station = next(
-    #         (p for p in self._build_order["Processes"] if p["Name"] == station_name), None
-    #     )
-    #     if station is None:
-    #         return
-    #     output_comp = next(
-    #         (c for c in station.get("Components", [])
-    #          if c["Name"].lower().startswith("output")),
-    #         None,
-    #     )
-    #     if output_comp is None:
-    #         messagebox.showwarning("Not found", "No output component found for this process.")
-    #         return
-    #     self.lbl_drawing_var.set(output_comp["Drawing Number"])
-    #     self.lbl_description_var.set(output_comp["Name"])
-    #     self._status(f"Label: {output_comp['Name']} [{output_comp['Drawing Number']}]")
-    #     self.lbl_vendor_var.set("Internal")
-    #     self.lbl_batch_var.set(self.build_number.get().strip())
 
     def _print_finished_parts(self):
         if not self._require_clockin():
@@ -952,21 +927,6 @@ class MESApp(tk.Tk):
         self._status(f"Label: {finished_comp_name} [{finished_comp_number}]")
         self.lbl_vendor_var.set("Internal")
         self.lbl_batch_var.set(self.build_number.get().strip())
-
-
-        # finished_comp = next(
-        #     (c for c in station.get("Components", [])
-        #      if c["Name"].lower().startswith("scrap")),
-        #     None,
-        # )
-        # if scrap_comp is None:
-        #     messagebox.showwarning("Not found", "No scrap component found for this process.")
-        #     return
-        # self.lbl_drawing_var.set(scrap_comp["Drawing Number"])
-        # self.lbl_description_var.set(scrap_comp["Name"])
-        # self._status(f"Label: {scrap_comp['Name']} [{scrap_comp['Drawing Number']}]")
-        # self.lbl_vendor_var.set("Internal")
-        # self.lbl_batch_var.set(self.build_number.get().strip())
 
     def _print_scrap(self):
         if not self._require_clockin():
