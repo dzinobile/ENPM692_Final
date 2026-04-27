@@ -700,7 +700,20 @@ class InventoryMESApp(tk.Tk):
         btn_refresh = accent_button(f, "REFRESH", self._refresh_requests, width=12)
         btn_refresh.pack(anchor="e", pady=(6, 0))
 
+        btn_row = tk.Frame(f, bg=PANEL_BG)
+        btn_row.pack(anchor="w", pady=(6, 0))
+        btn_request_trolley = accent_button(btn_row, "REQUEST TROLLEY", self._request_trolley, width=20)
+        btn_request_trolley.pack(side="left", padx=(0, 6))
+        btn_request_bin = accent_button(btn_row, "REQUEST BIN", self._request_bin, width=20)
+        btn_request_bin.pack(side="left")
+
         self._refresh_requests()
+
+    def _request_trolley(self):
+        return
+    
+    def _request_bin(self):
+        return
 
     def _refresh_requests(self):
         for item in self.req_tree.get_children():

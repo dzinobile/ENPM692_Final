@@ -894,6 +894,17 @@ class MESApp(tk.Tk):
         styled_label(f, "Batch:").grid(row=6, column=0, sticky="w", padx=(0, 4), pady=2)
         val_label(self.lbl_batch_var).grid(row=6, column=1, sticky="w", padx=8)
 
+        self.btn_request_trolley = accent_button(f, "REQUEST TROLLEY", self._request_trolley, width=20)
+        self.btn_request_trolley.grid(row=7, column=0, padx=4)
+
+        self.btn_request_bin = accent_button(f, "REQUEST BIN", self._request_bin, width=20)
+        self.btn_request_bin.grid(row=7, column=1, padx=4)
+
+    def _request_trolley(self):
+        return
+    
+    def _request_bin(self):
+        return
     # def _print_unused_partials(self):
     #     if not self._require_clockin():
     #         return
