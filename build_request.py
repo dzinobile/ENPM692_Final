@@ -204,13 +204,23 @@ def generate_build_yaml(build_num: str, requester: str, build_name: str, ta_numb
             }
             for c in proc.get("Components", [])
         ]
-        processes.append({
+        entry = {
             "Name":            proc["Name"],
             "Parts Completed": 0,
             "Total Parts":     quantity,
             "Status":          "Scheduled",
             "Components":      components,
-        })
+        }
+        scrap_list = proc.get("Scrap", [])
+        if scrap_list:
+            s = scrap_list[0]
+            entry["Scrap"] = {
+                "Name":           s["Name"],
+                "Drawing Number": s["Drawing Number"],
+                "Quantity":       s.get("Quantity", 0),
+                "Units":          s.get("Units", ""),
+            }
+        processes.append(entry)
 
     data = {
         "Requester":  requester,

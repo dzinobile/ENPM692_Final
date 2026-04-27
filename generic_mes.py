@@ -870,7 +870,7 @@ class MESApp(tk.Tk):
     def _build_print_labels_section(self, parent):
         outer, f = section_frame(parent, "PRINT CONTAINER LABELS")
         outer.pack(fill="both", expand=True)
-
+        
         
         # self.btn_print_unused_partials = accent_button(f, "PRINT UNUSED PARTIALS LABEL", self._print_unused_partials, width=30)
         # self.btn_print_unused_partials.grid(row=0, column=0, padx=4)
@@ -980,11 +980,7 @@ class MESApp(tk.Tk):
         )
         if station is None:
             return
-        scrap_comp = next(
-            (c for c in station.get("Components", [])
-             if c["Name"].lower().startswith("scrap")),
-            None,
-        )
+        scrap_comp = station.get("Scrap")
         if scrap_comp is None:
             messagebox.showwarning("Not found", "No scrap component found for this process.")
             return
