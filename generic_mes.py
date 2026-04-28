@@ -804,9 +804,7 @@ class MESApp(tk.Tk):
     # ------------------------------------------------------------------
 
     DEFECT_TYPES = [
-        "Flash", "Short Shot", "Sink Mark", "Weld Line", "Burn Mark",
-        "Warping", "Jetting", "Silver Streaks", "Delamination",
-        "Voids / Bubbles", "Discoloration", "Other",
+        "Pump Failure", "Valve Failure", "Tank Leak", "Other",
     ]
 
     def _build_defect_section(self, parent):
