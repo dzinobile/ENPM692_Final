@@ -1,0 +1,314 @@
+<h2 class="sr-only">Interactive Monte Carlo simulation for MES ROI with editable savings ranges per category, confidence intervals, and sensitivity analysis</h2>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 14px 16px; }
+  .metric-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .metric-value { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .metric-sub { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+  .section-title { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .chart-wrap { position: relative; width: 100%; }
+  .tab-row { display: flex; gap: 4px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab { padding: 5px 12px; border-radius: var(--border-radius-md); font-size: 12px; cursor: pointer; border: 0.5px solid var(--color-border-tertiary); background: transparent; color: var(--color-text-secondary); }
+  .tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); font-weight: 500; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .savings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.5rem; }
+  .cat-card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; border: 0.5px solid var(--color-border-tertiary); }
+  .cat-name { font-size: 12px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 10px; }
+  .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .slider-label { font-size: 11px; color: var(--color-text-secondary); width: 32px; text-align: right; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-val { font-size: 11px; font-weight: 500; color: var(--color-text-primary); width: 58px; text-align: right; }
+  .mode-highlight { color: #185FA5; }
+
+  .impl-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem; padding: 12px 16px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); }
+  .impl-row label { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
+  .impl-row input { flex: 1; }
+  .impl-val { font-size: 14px; font-weight: 500; min-width: 80px; }
+
+  .run-btn { padding: 7px 20px; font-size: 13px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; cursor: pointer; color: var(--color-text-primary); }
+
+  .tornado-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .tornado-label { width: 140px; text-align: right; color: var(--color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+  .tornado-bar-wrap { flex: 1; position: relative; height: 20px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden; }
+  .tornado-bar { height: 100%; position: absolute; border-radius: 3px; }
+  .tornado-val { width: 56px; font-size: 11px; color: var(--color-text-tertiary); }
+</style>
+
+<div style="padding: 1rem 0;">
+
+  <div class="impl-row">
+    <label>Implementation cost</label>
+    <input type="range" min="200000" max="1500000" step="50000" value="600000" id="implCost">
+    <span class="impl-val" id="implCostVal">$600,000</span>
+    <select id="nIter" style="font-size:12px; padding:4px 8px;">
+      <option value="5000">5K iter</option>
+      <option value="10000" selected>10K iter</option>
+      <option value="25000">25K iter</option>
+    </select>
+    <button class="run-btn" onclick="runSim()">↺ Re-run ↗</button>
+  </div>
+
+  <div class="section-title">Savings assumptions — adjust min / most likely / max per category</div>
+  <div class="savings-grid" id="savingsGrid"></div>
+
+  <div class="grid-4">
+    <div class="metric"><div class="metric-label">Expected annual savings</div><div class="metric-value" id="m-mean">—</div></div>
+    <div class="metric"><div class="metric-label">P10 conservative</div><div class="metric-value" id="m-p10" style="color:#185FA5;">—</div><div class="metric-sub">90% chance exceeds this</div></div>
+    <div class="metric"><div class="metric-label">P90 optimistic</div><div class="metric-value" id="m-p90" style="color:#3B6D11;">—</div><div class="metric-sub">10% chance exceeds this</div></div>
+    <div class="metric"><div class="metric-label">Expected payback</div><div class="metric-value" id="m-payback">—</div></div>
+  </div>
+
+  <div class="tab-row">
+    <button class="tab active" onclick="showTab('dist',this)">Distribution</button>
+    <button class="tab" onclick="showTab('conv',this)">Convergence</button>
+    <button class="tab" onclick="showTab('roi',this)">ROI & payback</button>
+    <button class="tab" onclick="showTab('tornado',this)">Sensitivity</button>
+  </div>
+
+  <div class="panel active" id="panel-dist">
+    <div class="section-title">Probability distribution of total annual savings</div>
+    <div class="chart-wrap" style="height:230px;"><canvas id="histChart" role="img" aria-label="Histogram of simulated total annual savings"></canvas></div>
+  </div>
+  <div class="panel" id="panel-conv">
+    <div class="section-title">Convergence of running mean</div>
+    <div class="chart-wrap" style="height:230px;"><canvas id="convChart" role="img" aria-label="Running mean convergence plot"></canvas></div>
+  </div>
+  <div class="panel" id="panel-roi">
+    <div class="section-title">Cumulative net value over 5 years</div>
+    <div class="chart-wrap" style="height:230px;"><canvas id="roiChart" role="img" aria-label="Cumulative ROI over 5 years across P10, mean, P90 scenarios"></canvas></div>
+  </div>
+  <div class="panel" id="panel-tornado">
+    <div class="section-title">Sensitivity — P90 minus P10 range per category</div>
+    <div id="tornadoChart" style="margin-top:8px;"></div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const CATS = [
+  { name: "Material delivery labor",  min: 100000, mode: 140000, max: 160000 },
+  { name: "Logistics",         min: 50000,  mode: 80000,  max: 100000 },
+  { name: "Data admin overhead",       min: 30000,  mode: 50000,  max: 60000  },
+  { name: "Scrap & rework",            min: 50000,  mode: 100000, max: 150000 },
+  { name: "Downtime / starvation",     min: 100000, mode: 200000, max: 300000 },
+  { name: "Operator data entry",       min: 20000,  mode: 40000,  max: 60000  },
+  { name: "Inventory carrying cost",   min: 0,      mode: 6000,   max: 15000  },
+  { name: "Machine breakdowns",        min: 10000,  mode: 26000,  max: 50000  },
+];
+
+const state = CATS.map(c => ({ ...c }));
+
+function fmt(v) { return '$' + Math.round(v).toLocaleString(); }
+function fmtK(v) { return '$' + Math.round(v/1000).toLocaleString() + 'K'; }
+
+function buildSavingsGrid() {
+  const grid = document.getElementById('savingsGrid');
+  grid.innerHTML = state.map((cat, i) => {
+    const minMax = 500000, step = 5000;
+    return `
+    <div class="cat-card">
+      <div class="cat-name">${cat.name}</div>
+      <div class="slider-row">
+        <span class="slider-label">Min</span>
+        <input type="range" min="0" max="${minMax}" step="${step}" value="${cat.min}" data-cat="${i}" data-field="min" oninput="onSlider(this)">
+        <span class="slider-val" id="lbl-${i}-min">${fmtK(cat.min)}</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label mode-highlight">Mode</span>
+        <input type="range" min="0" max="${minMax}" step="${step}" value="${cat.mode}" data-cat="${i}" data-field="mode" oninput="onSlider(this)" style="accent-color:#185FA5;">
+        <span class="slider-val mode-highlight" id="lbl-${i}-mode">${fmtK(cat.mode)}</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Max</span>
+        <input type="range" min="0" max="${minMax}" step="${step}" value="${cat.max}" data-cat="${i}" data-field="max" oninput="onSlider(this)">
+        <span class="slider-val" id="lbl-${i}-max">${fmtK(cat.max)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function onSlider(el) {
+  const i = parseInt(el.dataset.cat);
+  const field = el.dataset.field;
+  const val = parseInt(el.value);
+  state[i][field] = val;
+  document.getElementById(`lbl-${i}-${field}`).textContent = fmtK(val);
+  if (field === 'min' && state[i].mode < val) { state[i].mode = val; syncSlider(i,'mode'); }
+  if (field === 'max' && state[i].mode > val) { state[i].mode = val; syncSlider(i,'mode'); }
+  if (field === 'mode') {
+    if (val < state[i].min) { state[i].min = val; syncSlider(i,'min'); }
+    if (val > state[i].max) { state[i].max = val; syncSlider(i,'max'); }
+  }
+  if (field === 'min' && state[i].max < val) { state[i].max = val; syncSlider(i,'max'); }
+  runSim();
+}
+
+function syncSlider(i, field) {
+  const el = document.querySelector(`input[data-cat="${i}"][data-field="${field}"]`);
+  if (el) el.value = state[i][field];
+  const lbl = document.getElementById(`lbl-${i}-${field}`);
+  if (lbl) lbl.textContent = fmtK(state[i][field]);
+}
+
+function triSample(a, c, b) {
+  if (a === b) return a;
+  if (c < a) c = a; if (c > b) c = b;
+  const U = Math.random();
+  const fc = (b > a) ? (c - a) / (b - a) : 0.5;
+  return U < fc
+    ? a + Math.sqrt(U * (b - a) * (c - a))
+    : b - Math.sqrt((1 - U) * (b - a) * (b - c));
+}
+
+let histChart, convChart, roiChart, simTimer;
+
+function runSim() {
+  clearTimeout(simTimer);
+  simTimer = setTimeout(_doSim, 80);
+}
+
+function _doSim() {
+  const N = parseInt(document.getElementById('nIter').value);
+  const implCost = parseInt(document.getElementById('implCost').value);
+  const totals = new Array(N);
+  const catSamples = state.map(() => new Array(N));
+  const running = new Array(N);
+  let cumSum = 0;
+  for (let i = 0; i < N; i++) {
+    let s = 0;
+    for (let c = 0; c < state.length; c++) {
+      const { min, mode, max } = state[c];
+      const v = triSample(min, mode, max);
+      catSamples[c][i] = v;
+      s += v;
+    }
+    totals[i] = s;
+    cumSum += s;
+    running[i] = cumSum / (i + 1);
+  }
+  const sorted = [...totals].sort((a,b) => a-b);
+  const mean = sorted.reduce((a,b) => a+b, 0) / N;
+  const p10 = sorted[Math.floor(N*0.10)];
+  const p90 = sorted[Math.floor(N*0.90)];
+  const payback = implCost / mean;
+
+  document.getElementById('m-mean').textContent = fmtK(mean);
+  document.getElementById('m-p10').textContent = fmtK(p10);
+  document.getElementById('m-p90').textContent = fmtK(p90);
+  document.getElementById('m-payback').textContent = payback.toFixed(2) + ' yrs';
+
+  drawHist(sorted, mean, p10, p90);
+  drawConv(running, mean, N);
+  drawROI(mean, p10, p90, implCost);
+  drawTornado(catSamples);
+}
+
+function buildBins(sorted, nBins) {
+  const mn = sorted[0], mx = sorted[sorted.length-1];
+  const w = (mx - mn) / nBins || 1;
+  const counts = new Array(nBins).fill(0);
+  const labels = [];
+  for (let i = 0; i < nBins; i++) labels.push(mn + i*w + w/2);
+  for (const v of sorted) { let b = Math.min(Math.floor((v-mn)/w), nBins-1); counts[b]++; }
+  return { labels, counts };
+}
+
+function drawHist(sorted, mean, p10, p90) {
+  const { labels, counts } = buildBins(sorted, 50);
+  const bgColors = labels.map(l => l < p10 ? 'rgba(24,95,165,0.35)' : l > p90 ? 'rgba(59,109,17,0.35)' : 'rgba(24,95,165,0.6)');
+  if (histChart) histChart.destroy();
+  histChart = new Chart(document.getElementById('histChart'), {
+    type: 'bar',
+    data: { labels: labels.map(l => fmtK(l)), datasets: [{ data: counts, backgroundColor: bgColors, borderWidth: 0, label: 'Frequency' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: i => 'Around ' + i[0].label, label: i => 'Count: ' + i.raw } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0, font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { font: { size: 10 } }, grid: { color: 'rgba(128,128,128,0.15)' } }
+      }, animation: { duration: 300 }
+    }
+  });
+}
+
+function drawConv(running, mean, N) {
+  const step = Math.max(1, Math.floor(N/200));
+  const xs=[], ys=[];
+  for (let i=step-1; i<N; i+=step) { xs.push(i+1); ys.push(running[i]); }
+  if (convChart) convChart.destroy();
+  convChart = new Chart(document.getElementById('convChart'), {
+    type: 'line',
+    data: { labels: xs, datasets: [
+      { label: 'Running mean', data: ys, borderColor: '#185FA5', borderWidth: 1.5, pointRadius: 0, fill: false },
+      { label: 'Steady state', data: xs.map(() => mean), borderColor: '#A32D2D', borderWidth: 1.5, borderDash: [6,3], pointRadius: 0, fill: false }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { font: { size: 10 }, boxWidth: 10 } } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 6, font: { size: 10 }, callback: (v,i) => xs[i].toLocaleString() }, grid: { display: false } },
+        y: { ticks: { font: { size: 10 }, callback: v => fmtK(v) }, grid: { color: 'rgba(128,128,128,0.15)' } }
+      }, animation: { duration: 300 }
+    }
+  });
+}
+
+function drawROI(mean, p10, p90, implCost) {
+  const years = [0,1,2,3,4,5];
+  if (roiChart) roiChart.destroy();
+  roiChart = new Chart(document.getElementById('roiChart'), {
+    type: 'line',
+    data: { labels: years.map(y => 'Year ' + y), datasets: [
+      { label: 'P10 (conservative)', data: years.map(y => Math.round(-implCost + p10*y)), borderColor: '#185FA5', borderDash: [5,3], borderWidth: 1.5, pointRadius: 3, fill: false },
+      { label: 'Mean', data: years.map(y => Math.round(-implCost + mean*y)), borderColor: '#3B6D11', borderWidth: 2, pointRadius: 3, fill: false },
+      { label: 'P90 (optimistic)', data: years.map(y => Math.round(-implCost + p90*y)), borderColor: '#639922', borderDash: [5,3], borderWidth: 1.5, pointRadius: 3, fill: false },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { font: { size: 10 }, boxWidth: 10 } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { ticks: { font: { size: 10 }, callback: v => (v<0?'-':'')+'$'+Math.abs(Math.round(v/1000)).toLocaleString()+'K' }, grid: { color: 'rgba(128,128,128,0.15)' } }
+      }, animation: { duration: 300 }
+    }
+  });
+}
+
+function drawTornado(catSamples) {
+  const ranges = state.map((cat, i) => {
+    const s = [...catSamples[i]].sort((a,b) => a-b);
+    const N = s.length;
+    return { name: cat.name, range: s[Math.floor(N*0.90)] - s[Math.floor(N*0.10)] };
+  }).sort((a,b) => b.range - a.range);
+  const maxRange = ranges[0].range || 1;
+  const barColors = ['rgba(24,95,165,0.75)','rgba(24,95,165,0.6)','rgba(59,109,17,0.7)','rgba(59,109,17,0.55)','rgba(99,153,34,0.65)','rgba(99,153,34,0.5)','rgba(136,135,128,0.55)','rgba(136,135,128,0.4)'];
+  document.getElementById('tornadoChart').innerHTML = ranges.map((r,i) => `
+    <div class="tornado-row">
+      <div class="tornado-label" title="${r.name}">${r.name}</div>
+      <div class="tornado-bar-wrap">
+        <div class="tornado-bar" style="width:${Math.round(r.range/maxRange*100)}%;background:${barColors[i]};"></div>
+      </div>
+      <div class="tornado-val">${fmtK(r.range)}</div>
+    </div>`).join('');
+}
+
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+document.getElementById('implCost').addEventListener('input', function() {
+  document.getElementById('implCostVal').textContent = '$' + parseInt(this.value).toLocaleString();
+  runSim();
+});
+
+buildSavingsGrid();
+setTimeout(runSim, 150);
+</script>

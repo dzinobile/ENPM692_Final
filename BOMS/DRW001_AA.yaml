@@ -9,3 +9,8 @@ Processes:
       Drawing Number: DRW013_AA
       Quantity: 0.8
       Units: kg
+    Scrap:
+    - Name: scrap - tank blow molding
+      Drawing Number: SCR005.yaml
+      Quantity: 0
+      Units: each
